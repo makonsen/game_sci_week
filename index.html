@@ -63,6 +63,40 @@
             font-size: 14px;
             cursor: pointer;
         }
+        svg .selected-object {
+            filter: drop-shadow(0 0 8px #00FF00);
+        }
+        #editorContextMenu {
+            position: fixed;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 0;
+            z-index: 10001;
+            font-size: 13px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.2);
+            display: none;
+        }
+        #editorContextMenu button {
+            display: block;
+            width: 100%;
+            padding: 6px 12px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            color: #333;
+        }
+        #editorContextMenu button:hover {
+            background: #f0f0f0;
+        }
+        svg .draggable-object {
+            cursor: move;
+        }
+        svg .draggable-object.dragging {
+            filter: drop-shadow(0 0 10px #FFD700);
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -89,6 +123,32 @@
             <div id="jump-value" style="text-align:right;">21</div>
         </label>
         <button id="apply-settings">บันทึก</button>
+    </div>
+    <div id="levelEditorPanel" style="position:absolute;left:20px;top:60px;background:#fff;border:1px solid #ccc;padding:12px;z-index:10000;width:260px;box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:14px;color:#333;display:none;">
+        <div style="font-weight:bold;margin-bottom:8px;">Level Editor</div>
+        <label>ประเภทวัตถุ:
+            <select id="place-type" style="width:100%;margin-top:4px;">
+                <option value="brick">Brick</option>
+                <option value="qblock">Question Block</option>
+                <option value="pipe">Pipe</option>
+                <option value="obstacle">Obstacle</option>
+            </select>
+        </label>
+        <label>ตำแหน่ง X:
+            <input id="place-x" type="number" value="100" style="width:100%;"/>
+        </label>
+        <label>ตำแหน่ง Y:
+            <input id="place-y" type="number" value="200" style="width:100%;"/>
+        </label>
+        <button id="place-btn">วางวัตถุ</button>
+        <button id="toggle-place-mode" style="margin-top:8px;">โหมดคลิกเพื่อวาง: ปิด</button>
+        <hr>
+        <div style="font-weight:bold;margin-bottom:6px;">จัดการด่าน</div>
+        <input id="level-name" placeholder="ชื่อด่าน" style="width:100%;margin-bottom:6px;" />
+        <button id="save-level">บันทึกด่าน</button>
+        <button id="load-level" style="margin-top:6px;">โหลดด่าน</button>
+        <button id="export-level" style="margin-top:6px;">ส่งออก JSON</button>
+        <button id="clear-level" style="margin-top:6px;background:#c33;">ล้างด่าน</button>
     </div>
     <svg width="100%" height="100%" viewBox="0 0 5000 400">
         <!-- Sky background -->
@@ -280,69 +340,259 @@
                 jumpPower: 21,
                 gravity: 1.4
             };
-            let maxSpeed = settings.speed;
-            let jumpStrength = -settings.jumpPower;
-            let gravity = settings.gravity;
+            let maxSpeed, jumpStrength, gravity;
             function applySettings() {
                 maxSpeed = settings.speed;
                 jumpStrength = -settings.jumpPower;
                 gravity = settings.gravity;
             }
-                const startLives = 3;
-                // coin and life state
-                let coins = 0;
-                let lives = startLives;
-                const coinCountEl = document.getElementById('coin-count');
-                const hud = document.getElementById('hud');
-                hud.insertAdjacentHTML('beforeend', ' | ชีวิต: ');
-                const lifeCountEl = document.createElement('span');
-                lifeCountEl.id = 'life-count';
-                lifeCountEl.textContent = lives;
-                hud.appendChild(lifeCountEl);
-                const settingsButton = document.createElement('button');
-                settingsButton.id = 'settings-btn';
-                settingsButton.textContent = 'ตั้งค่า';
-                hud.appendChild(settingsButton);
-                const blockRects = Array.from(document.querySelectorAll('g.q-block rect, rect[fill="#8B4513"], rect[fill="#654321"]'));
-                // lower question mark blocks and reduce visual height of box platforms
-                blockRects.forEach(r => {
-                    const isQBlock = r.parentNode.classList.contains('q-block');
-                    const isBox = isQBlock || r.getAttribute('fill') === '#8B4513';
-                    if (isQBlock) {
-                        const newY = parseFloat(r.getAttribute('y')) + 20;
-                        r.setAttribute('y', newY.toString());
-                        const textEl = r.parentNode.querySelector('text');
-                        if (textEl) {
-                            textEl.setAttribute('y', (parseFloat(textEl.getAttribute('y')) + 20).toString());
-                        }
-                    }
-                    if (isBox && parseFloat(r.getAttribute('height')) === 40) {
-                        r.setAttribute('height', '30');
-                        const textEl = r.parentNode.querySelector('text');
-                        if (textEl) {
-                            textEl.setAttribute('y', (parseFloat(textEl.getAttribute('y')) - 5).toString());
-                        }
+            applySettings();
+
+            const startLives = 3;
+            let coins = 0, lives = startLives, hurtCooldown = 0;
+            const coinCountEl = document.getElementById('coin-count');
+            const hud = document.getElementById('hud');
+            hud.insertAdjacentHTML('beforeend', ' | ชีวิต: <span id="life-count">3</span><button id="settings-btn" style="margin-left:10px;padding:4px 8px;font-size:14px;cursor:pointer;">ตั้งค่า</button><button id="editor-btn" style="margin-left:10px;padding:4px 8px;font-size:14px;cursor:pointer;">แก้ไขด่าน</button>');
+            const lifeCountEl = document.getElementById('life-count');
+            
+            const editorBtn = document.getElementById('editor-btn');
+            const levelEditorPanel = document.getElementById('levelEditorPanel');
+            editorBtn.addEventListener('click', () => {
+                levelEditorPanel.style.display = levelEditorPanel.style.display === 'block' ? 'none' : 'block';
+            });
+
+            // Level editor functionality
+            const placeTypeEl = document.getElementById('place-type');
+            const placeXEl = document.getElementById('place-x');
+            const placeYEl = document.getElementById('place-y');
+            const placeBtn = document.getElementById('place-btn');
+            const togglePlaceModeBtn = document.getElementById('toggle-place-mode');
+            const saveLevelBtn = document.getElementById('save-level');
+            const loadLevelBtn = document.getElementById('load-level');
+            const exportLevelBtn = document.getElementById('export-level');
+            const clearLevelBtn = document.getElementById('clear-level');
+            const levelNameEl = document.getElementById('level-name');
+
+            let clickPlaceMode = false;
+            function createObject(type,x,y){
+                if(type === 'brick'){
+                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+                    r.setAttribute('x', x);
+                    r.setAttribute('y', y);
+                    r.setAttribute('width', 40);
+                    r.setAttribute('height', 30);
+                    r.setAttribute('fill','#8B4513');
+                    r.setAttribute('stroke','#654321');
+                    r.setAttribute('stroke-width','2');
+                    svg.appendChild(r);
+                } else if(type === 'qblock'){
+                    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+                    g.setAttribute('class','q-block');
+                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+                    r.setAttribute('x', x);
+                    r.setAttribute('y', y);
+                    r.setAttribute('width', 40);
+                    r.setAttribute('height', 40);
+                    r.setAttribute('fill','#FFD700');
+                    r.setAttribute('stroke','#FFA500');
+                    r.setAttribute('stroke-width','2');
+                    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+                    t.setAttribute('x', x+20);
+                    t.setAttribute('y', y+30);
+                    t.setAttribute('font-size','24');
+                    t.setAttribute('font-weight','bold');
+                    t.setAttribute('text-anchor','middle');
+                    t.setAttribute('fill','#FF6347');
+                    t.textContent = '?';
+                    g.appendChild(r);
+                    g.appendChild(t);
+                    svg.appendChild(g);
+                } else if(type === 'pipe'){
+                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+                    r.setAttribute('x', x);
+                    r.setAttribute('y', y);
+                    r.setAttribute('width', 50);
+                    r.setAttribute('height', 50);
+                    r.setAttribute('fill','#228B22');
+                    r.setAttribute('stroke','#0B6623');
+                    r.setAttribute('stroke-width','2');
+                    svg.appendChild(r);
+                } else if(type === 'obstacle'){
+                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+                    r.setAttribute('x', x);
+                    r.setAttribute('y', y);
+                    r.setAttribute('width', 60);
+                    r.setAttribute('height', 20);
+                    r.setAttribute('fill','#654321');
+                    svg.appendChild(r);
+                }
+                // make newly created object draggable for level editing
+                const last = svg.lastElementChild;
+                if(last){
+                    last.classList.add('editor-placed');
+                    last.setAttribute('data-draggable','true');
+                    // register newly created object into physics blocks so Mario can stand on them
+                    (function registerBlock(el){
+                        // for q-block group, find rect child
+                        let rect = el;
+                        if(el.tagName === 'g') rect = el.querySelector('rect');
+                        if(!rect) return;
+                        const gx = parseFloat(rect.getAttribute('x')||0);
+                        const gy = parseFloat(rect.getAttribute('y')||0);
+                        const gw = parseFloat(rect.getAttribute('width')||0);
+                        const gh = parseFloat(rect.getAttribute('height')||0);
+                        const isQ = el.classList?.contains('q-block') || rect.parentNode.classList?.contains('q-block');
+                        blocks.push({ gx, gy, gw, gh, used: false, isQBlock: !!isQ, group: isQ ? (rect.parentNode) : null });
+                    })(last);
+                }
+            }
+
+            // allow deleting placed objects by double-clicking them
+            svg.addEventListener('dblclick', (ev) => {
+                const target = ev.target;
+                // find nearest editor-placed element (either rect or group)
+                let el = target;
+                while(el && el !== svg && !el.classList?.contains('editor-placed')) el = el.parentNode;
+                if(!el || el === svg) return;
+                // remove corresponding block entry if present
+                let r = el;
+                if(el.tagName === 'g' && el.classList.contains('q-block')) r = el.querySelector('rect');
+                const rx = parseFloat(r.getAttribute('x')||0);
+                const ry = parseFloat(r.getAttribute('y')||0);
+                // find matching block by coordinates and remove one instance
+                for(let i=0;i<blocks.length;i++){
+                    const b = blocks[i];
+                    if(Math.abs(b.gx - rx) < 1 && Math.abs(b.gy - ry) < 1){ blocks.splice(i,1); break; }
+                }
+                el.remove();
+            });
+
+            placeBtn.addEventListener('click', ()=>{
+                const type = placeTypeEl.value;
+                const x = parseFloat(placeXEl.value) || 0;
+                const y = parseFloat(placeYEl.value) || 0;
+                createObject(type,x,y);
+            });
+
+            togglePlaceModeBtn.addEventListener('click', ()=>{
+                clickPlaceMode = !clickPlaceMode;
+                togglePlaceModeBtn.textContent = `โหมดคลิกเพื่อวาง: ${clickPlaceMode? 'เปิด':'ปิด'}`;
+            });
+
+            svg.addEventListener('click', (ev)=>{
+                if(!clickPlaceMode) return;
+                const pt = svg.createSVGPoint();
+                pt.x = ev.clientX; pt.y = ev.clientY;
+                const ctm = svg.getScreenCTM().inverse();
+                const loc = pt.matrixTransform(ctm);
+                const type = placeTypeEl.value;
+                createObject(type, Math.round(loc.x), Math.round(loc.y));
+            });
+
+            function collectLevelData(){
+                const objs = [];
+                // bricks, q-blocks, pipes, obstacles
+                svg.querySelectorAll('rect, g.q-block').forEach(el=>{
+                    if(el.tagName === 'g' && el.classList.contains('q-block')){
+                        const r = el.querySelector('rect');
+                        objs.push({type:'qblock', x:parseFloat(r.getAttribute('x')), y:parseFloat(r.getAttribute('y'))});
+                    } else if(el.tagName === 'rect'){
+                        const fill = el.getAttribute('fill')||'';
+                        const w = parseFloat(el.getAttribute('width')||0);
+                        const h = parseFloat(el.getAttribute('height')||0);
+                        const x = parseFloat(el.getAttribute('x')||0);
+                        const y = parseFloat(el.getAttribute('y')||0);
+                        if(fill === '#8B4513') objs.push({type:'brick',x,y,w,h});
+                        else if(fill === '#228B22') objs.push({type:'pipe',x,y,w,h});
+                        else if(fill === '#654321') objs.push({type:'obstacle',x,y,w,h});
                     }
                 });
-                // prepare block bounds for standing and bumping surfaces
-                const blocks = blockRects.map(r => {
-                    const isQBlock = r.parentNode.classList.contains('q-block');
-                    return {
-                        gx: parseFloat(r.getAttribute('x')),
-                        gy: parseFloat(r.getAttribute('y')),
-                        gw: parseFloat(r.getAttribute('width')),
-                        gh: parseFloat(r.getAttribute('height')),
-                        used: false,
-                        isQBlock,
-                        group: isQBlock ? r.parentNode : null
-                    };
+                return objs;
+            }
+
+            saveLevelBtn.addEventListener('click', ()=>{
+                const name = (levelNameEl.value || 'level1').trim();
+                const data = collectLevelData();
+                localStorage.setItem('level_'+name, JSON.stringify(data));
+                alert('บันทึกด่านแล้ว: '+name);
+            });
+
+            loadLevelBtn.addEventListener('click', ()=>{
+                const name = (levelNameEl.value || 'level1').trim();
+                const raw = localStorage.getItem('level_'+name);
+                if(!raw){ alert('ไม่พบด่าน: '+name); return; }
+                // clear dynamic objects (keep background/static by id ranges)
+                // remove objects added (not original by checking positions < 1600? simple approach: remove those not in a whitelist)
+                // For simplicity remove all rects/gs except originals by keeping those with x < 1400? We'll clear and re-create base by reloading page for now.
+                try{
+                    // remove all user-placed rects/g.q-block with x >=0 (conservative)
+                    svg.querySelectorAll('g.q-block, rect').forEach(el=>{
+                        // avoid removing ground and sky by checking attributes
+                        const x = parseFloat(el.getAttribute('x')||0);
+                        const y = parseFloat(el.getAttribute('y')||0);
+                        // skip sky and ground
+                        if(el.getAttribute('width')==='5000' && el.getAttribute('height')==='250') return;
+                        if(el.getAttribute('y')==='250' && el.getAttribute('height')==='150') return;
+                        // remove
+                        if(!el.id || el.id.indexOf('endFlag')===-1) el.remove();
+                    });
+                }catch(e){}
+                const data = JSON.parse(raw);
+                data.forEach(o=> createObject(o.type, o.x, o.y));
+                alert('โหลดด่าน: '+name);
+            });
+
+            exportLevelBtn.addEventListener('click', ()=>{
+                const data = collectLevelData();
+                const blob = new Blob([JSON.stringify(data, null, 2)],{type:'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = (levelNameEl.value||'level')+'.json';
+                document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            });
+
+            clearLevelBtn.addEventListener('click', ()=>{
+                if(!confirm('ล้างวัตถุที่วางทั้งหมด?')) return;
+                svg.querySelectorAll('g.q-block, rect').forEach(el=>{
+                    const w = el.getAttribute('width');
+                    const h = el.getAttribute('height');
+                    // skip sky and ground and endFlag
+                    if(w==='5000' && h==='250') return;
+                    if(el.getAttribute('y')==='250' && el.getAttribute('height')==='150') return;
+                    if(el.closest('#endFlag')) return;
+                    // also skip original mario and enemies by id
+                    if(el.id && (el.id==='mario' || el.id.startsWith('goomba') || el.id==='obstacles' || el.id==='stairs')) return;
+                    el.remove();
                 });
-                const enemies = [
-                    { left: 680, right: 720, top: 295, bottom: 328 },
-                    { left: 1080, right: 1120, top: 295, bottom: 328 }
-                ];
-                const hurtCooldownMax = 30;
-                let hurtCooldown = 0;
+            });
+
+            const blockRects = document.querySelectorAll('g.q-block rect, rect[fill="#8B4513"], rect[fill="#654321"]');
+            const blocks = Array.from(blockRects).map(r => {
+                const isQBlock = r.parentNode.classList?.contains('q-block');
+                if (isQBlock) {
+                    const newY = parseFloat(r.getAttribute('y')) + 20;
+                    r.setAttribute('y', newY);
+                    r.parentNode.querySelector('text')?.setAttribute('y', parseFloat(r.parentNode.querySelector('text').getAttribute('y')) + 20);
+                }
+                if (!isQBlock && parseFloat(r.getAttribute('height')) === 40) {
+                    r.setAttribute('height', '30');
+                }
+                return {
+                    gx: parseFloat(r.getAttribute('x')),
+                    gy: parseFloat(r.getAttribute('y')),
+                    gw: parseFloat(r.getAttribute('width')),
+                    gh: parseFloat(r.getAttribute('height')),
+                    used: false,
+                    isQBlock,
+                    group: isQBlock ? r.parentNode : null
+                };
+            });
+
+            const enemies = [
+                { left: 680, right: 720, top: 295, bottom: 328 },
+                { left: 1080, right: 1120, top: 295, bottom: 328 }
+            ];
+            const hurtCooldownMax = 30;
             // jumping physics
             let vy = 0;
             const fallMultiplier = 1.4;

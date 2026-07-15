@@ -30,11 +30,66 @@
             left: 20px;
             color: #333;
         }
+        #settingsPanel {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 12px;
+            display: none;
+            z-index: 10000;
+            width: 240px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.2);
+            font-size: 14px;
+            color: #333;
+        }
+        #settingsPanel label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        #settingsPanel button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 8px;
+            border: none;
+            background: #228B22;
+            color: #fff;
+            cursor: pointer;
+        }
+        #settings-btn {
+            margin-left: 10px;
+            padding: 4px 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <h1>Mario Scene Map</h1>
     <div id="hud" style="position: absolute; right: 20px; top: 10px; color:#333; font-weight:bold">Coins: <span id="coin-count">0</span></div>
+    <div id="settingsPanel">
+        <div style="font-weight:bold; margin-bottom:8px;">การตั้งค่าเกม</div>
+        <label>
+            ระดับความยาก:
+            <select id="difficulty-select" style="width:100%; margin-top:4px;">
+                <option value="easy">ง่าย</option>
+                <option value="normal" selected>ปกติ</option>
+                <option value="hard">ยาก</option>
+            </select>
+        </label>
+        <label>
+            ความเร็วเดิน:
+            <input id="speed-range" type="range" min="4" max="10" step="1" value="6" style="width:100%;"/>
+            <div id="speed-value" style="text-align:right;">6</div>
+        </label>
+        <label>
+            แรงกระโดด:
+            <input id="jump-range" type="range" min="18" max="26" step="1" value="21" style="width:100%;"/>
+            <div id="jump-value" style="text-align:right;">21</div>
+        </label>
+        <button id="apply-settings">บันทึก</button>
+    </div>
     <svg width="100%" height="100%" viewBox="0 0 5000 400">
         <!-- Sky background -->
         <rect width="5000" height="250" fill="#87CEEB"/>
@@ -216,11 +271,23 @@
             let x = 50; // initial cx of head
             let y = 0;
             let vx = 0; // horizontal velocity
-            const maxSpeed = 6; // max horizontal speed
             const accel = 0.8; // acceleration when key held
             const decel = 0.7; // deceleration when key released
             let walking = false;
             const keys = { left: false, right: false };
+            const settings = {
+                speed: 6,
+                jumpPower: 21,
+                gravity: 1.4
+            };
+            let maxSpeed = settings.speed;
+            let jumpStrength = -settings.jumpPower;
+            let gravity = settings.gravity;
+            function applySettings() {
+                maxSpeed = settings.speed;
+                jumpStrength = -settings.jumpPower;
+                gravity = settings.gravity;
+            }
                 const startLives = 3;
                 // coin and life state
                 let coins = 0;
@@ -232,6 +299,10 @@
                 lifeCountEl.id = 'life-count';
                 lifeCountEl.textContent = lives;
                 hud.appendChild(lifeCountEl);
+                const settingsButton = document.createElement('button');
+                settingsButton.id = 'settings-btn';
+                settingsButton.textContent = 'ตั้งค่า';
+                hud.appendChild(settingsButton);
                 const blockRects = Array.from(document.querySelectorAll('g.q-block rect, rect[fill="#8B4513"], rect[fill="#654321"]'));
                 // lower question mark blocks and reduce visual height of box platforms
                 blockRects.forEach(r => {
@@ -274,8 +345,6 @@
                 let hurtCooldown = 0;
             // jumping physics
             let vy = 0;
-            const gravity = 1.4;
-            const jumpStrength = -21;
             const fallMultiplier = 1.4;
             const groundY = 0; // translate y == 0 means standing on ground as drawn
             let jumpCount = 0;
@@ -356,6 +425,55 @@
 
             // initialize position (original drawing assumes cx=50 head, so translate 0)
             update();
+
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const difficultySelect = document.getElementById('difficulty-select');
+            const speedRange = document.getElementById('speed-range');
+            const jumpRange = document.getElementById('jump-range');
+            const speedValue = document.getElementById('speed-value');
+            const jumpValue = document.getElementById('jump-value');
+            const applySettingsBtn = document.getElementById('apply-settings');
+
+            function applyDifficultyPreset(level) {
+                if (level === 'easy') {
+                    settings.speed = 5;
+                    settings.jumpPower = 19;
+                    settings.gravity = 1.2;
+                } else if (level === 'hard') {
+                    settings.speed = 8;
+                    settings.jumpPower = 23;
+                    settings.gravity = 1.6;
+                } else {
+                    settings.speed = 6;
+                    settings.jumpPower = 21;
+                    settings.gravity = 1.4;
+                }
+                speedRange.value = settings.speed;
+                jumpRange.value = settings.jumpPower;
+                speedValue.textContent = settings.speed;
+                jumpValue.textContent = settings.jumpPower;
+                applySettings();
+            }
+
+            function toggleSettingsPanel() {
+                settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+            }
+
+            settingsBtn.addEventListener('click', toggleSettingsPanel);
+            difficultySelect.addEventListener('change', (e) => applyDifficultyPreset(e.target.value));
+            speedRange.addEventListener('input', (e) => {
+                settings.speed = parseInt(e.target.value, 10);
+                speedValue.textContent = settings.speed;
+            });
+            jumpRange.addEventListener('input', (e) => {
+                settings.jumpPower = parseInt(e.target.value, 10);
+                jumpValue.textContent = settings.jumpPower;
+            });
+            applySettingsBtn.addEventListener('click', () => {
+                applySettings();
+                toggleSettingsPanel();
+            });
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowRight') {

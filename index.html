@@ -345,13 +345,12 @@
                 x = clamp(x, 0, LEVEL_WIDTH - 40);
                 // apply translate to mario
                 mario.setAttribute('transform', `translate(${x},${y})`);
-                // camera follows mario closely (center camera on mario with offset)
+                // camera follows mario horizontally but stays fixed vertically
                 const marioScreenX = 50 + x;
-                const marioScreenY = 280 + y;
                 const cameraWidth = 800;
                 const cameraHeight = 400;
                 const cameraX = marioScreenX - cameraWidth / 2; // center on mario horizontally
-                const cameraY = marioScreenY - cameraHeight / 2; // center on mario vertically
+                const cameraY = 0; // keep vertical view fixed so only character moves up/down
                 svg.setAttribute('viewBox', `${cameraX} ${cameraY} ${cameraWidth} ${cameraHeight}`);
             }
 

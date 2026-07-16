@@ -97,9 +97,47 @@
             filter: drop-shadow(0 0 10px #FFD700);
             opacity: 0.9;
         }
+        #startScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10002;
+        }
+        #startScreen h2 {
+            margin-bottom: 20px;
+        }
+        #startScreen select {
+            width: 250px;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        #startScreen button {
+            width: 250px;
+            padding: 12px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #228B22;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
+    <div id="startScreen">
+        <h2>เลือกด่าน</h2>
+        <select id="start-level-select"></select>
+        <button id="start-game-btn">เริ่มเกม</button>
+    </div>
     <h1>Mario Scene Map</h1>
     <div id="hud" style="position: absolute; right: 20px; top: 10px; color:#333; font-weight:bold">Coins: <span id="coin-count">0</span></div>
     <div id="settingsPanel">
@@ -144,12 +182,17 @@
         <button id="place-btn">วางวัตถุ</button>
         <button id="toggle-place-mode" style="margin-top:8px;">โหมดคลิกเพื่อวาง: ปิด</button>
         <hr>
+        <div style="font-weight:bold;margin-bottom:6px;">โหลดด่านสำเร็จรูป</div>
+        <select id="premade-level-select" style="width:100%;margin-bottom:6px;"></select>
+        <button id="load-premade-level" style="margin-top:6px;">โหลดด่านที่เลือก</button>
+        <hr>
         <div style="font-weight:bold;margin-bottom:6px;">จัดการด่าน</div>
         <input id="level-name" placeholder="ชื่อด่าน" style="width:100%;margin-bottom:6px;" />
         <button id="save-level">บันทึกด่าน</button>
         <button id="load-level" style="margin-top:6px;">โหลดด่าน</button>
         <button id="export-level" style="margin-top:6px;">ส่งออก JSON</button>
-        <button id="select-level-btn" style="margin-top:6px;">เลือกด่าน</button>
+        <button id="import-level-btn" style="margin-top:6px;">นำเข้าด่าน (JSON)</button>
+        <input type="file" id="level-file-input" accept=".json" style="display:none;" />
         <button id="clear-level" style="margin-top:6px;background:#c33;">ล้างด่าน</button>
     </div>
     <svg width="100%" height="100%" viewBox="0 0 5000 400">
@@ -176,18 +219,8 @@
             <polygon points="4955,240 4955,280 4985,260" fill="#FF0000"/>
         </g>
     </svg>
-    <div id="level-select-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 20000; display:flex; justify-content:center; align-items:center;">
-        <div style="background:white; padding:20px 40px; border-radius:8px; text-align:center; max-height: 80vh; overflow-y: auto;">
-            <h2 style="margin-top:0;">เลือกด่าน</h2>
-            <div id="level-select-container">
-                <!-- Level buttons will be inserted here -->
-            </div>
-        </div>
-    </div>
     <script>
-        // Mario character (simple representation) - Moved to JS for dynamic creation if needed, or kept as initial element
-        // Keeping Mario as an initial element in the HTML for now, as the request was to remove blocks and monsters, not Mario.
-        // If Mario should also be dynamically loaded, this section would be removed from HTML and added to JS.
+        // Add Mario character via JS
         document.querySelector('svg').insertAdjacentHTML('beforeend', `
             <g id="mario">
                 <!-- Head -->
@@ -213,10 +246,11 @@
             const svg = document.querySelector('svg');
             const LEVEL_WIDTH = 5000;
             let x = 50; // initial cx of head
-            let y = -88; // initial translateY for Mario to start on the ground (250 - 338)
+            let y = 0;
             let vx = 0; // horizontal velocity
             const accel = 0.8; // acceleration when key held
             const decel = 0.7; // deceleration when key released
+            let gameStarted = false;
             let walking = false; // Mario walking state
             const keys = { left: false, right: false, editorLeft: false, editorRight: false, editorUp: false, editorDown: false }; // Added editor keys for vertical movement
             const settings = {
@@ -273,9 +307,59 @@
             const loadLevelBtn = document.getElementById('load-level');
             const exportLevelBtn = document.getElementById('export-level');
             const clearLevelBtn = document.getElementById('clear-level');
-            const selectLevelBtn = document.getElementById('select-level-btn');
+            const importLevelBtn = document.getElementById('import-level-btn');
+            const levelFileInput = document.getElementById('level-file-input');
             const levelNameEl = document.getElementById('level-name');
+            const premadeLevelSelect = document.getElementById('premade-level-select');
+            const loadPremadeLevelBtn = document.getElementById('load-premade-level');
+            const startScreen = document.getElementById('startScreen');
+            const startLevelSelect = document.getElementById('start-level-select');
+            const startGameBtn = document.getElementById('start-game-btn');
 
+            (async function populateLevels() {
+                try {
+                    const response = await fetch('levels.json');
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const levels = await response.json();
+                    
+                    premadeLevelSelect.innerHTML = ''; // Clear existing options
+                    startLevelSelect.innerHTML = '';
+                    levels.forEach(level => {
+                        const option = document.createElement('option');
+                        option.value = level.file;
+                        option.textContent = level.name;
+                        premadeLevelSelect.appendChild(option.cloneNode(true));
+                        startLevelSelect.appendChild(option);
+                    });
+                } catch (e) {
+                    console.error("Could not load level list:", e);
+                    premadeLevelSelect.innerHTML = `<option value="">ไม่สามารถโหลดด่านได้</option>`;
+                    startLevelSelect.innerHTML = `<option value="">ไม่สามารถโหลดด่านได้</option>`;
+                    premadeLevelSelect.disabled = true;
+                    loadPremadeLevelBtn.disabled = true;
+                    startLevelSelect.disabled = true;
+                    startGameBtn.disabled = true;
+                }
+            })();
+
+            startGameBtn.addEventListener('click', async () => {
+                const levelFile = startLevelSelect.value;
+                if (!levelFile) {
+                    alert('กรุณาเลือกด่าน');
+                    return;
+                }
+                try {
+                    const response = await fetch(levelFile);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const levelData = await response.json();
+                    loadLevelFromData(levelData);
+                    startScreen.style.display = 'none';
+                    gameStarted = true;
+                } catch (e) {
+                    console.error(`Failed to load level ${levelFile}:`, e);
+                    alert(`ไม่สามารถโหลดไฟล์ด่าน: ${levelFile}`);
+                }
+            });
             let clickPlaceMode = false;
             function createObject(type, x, y, w, h, message){
                 let newElement;
@@ -366,6 +450,7 @@
                 }
                 
                 if (newElement) {
+                    newElement.setAttribute('data-object-type', type);
                     newElement.classList.add('editor-placed');
                     newElement.setAttribute('data-draggable', 'true');
                     svg.appendChild(newElement);
@@ -431,41 +516,67 @@
 
             function collectLevelData(){
                 const objs = [];
-                svg.querySelectorAll('.editor-placed').forEach(el=>{
-                    const blockData = blocks.find(b => b.element === el);
-                    const npcData = npcs.find(n => n.element === el);
+                // Select all elements that were dynamically placed and have a type
+                svg.querySelectorAll('[data-object-type]').forEach(el => {
+                    const type = el.getAttribute('data-object-type');
+                    const obj = { type };
 
-                    if (blockData) {
-                        if (blockData.isQBlock) {
-                            objs.push({ type: 'qblock', x: blockData.gx, y: blockData.gy });
-                        } else {
-                            const fill = el.getAttribute('fill') || '';
-                            let type = 'brick'; // default
-                            if (fill === '#228B22') type = 'pipe';
-                            else if (fill === '#654321') type = 'obstacle';
-                            objs.push({ type: type, x: blockData.gx, y: blockData.gy, w: blockData.gw, h: blockData.gh });
+                    if (type === 'npc') {
+                        const body = el.querySelector('circle:nth-child(1)');
+                        const textEl = el.querySelector('text');
+                        if (body) {
+                            obj.x = parseFloat(body.getAttribute('cx')) - 15;
+                            obj.y = parseFloat(body.getAttribute('cy')) + 15;
+                            obj.message = textEl ? textEl.textContent : 'Hi!';
                         }
-                    } else if (npcData) {
-                        objs.push({ type: 'npc', x: npcData.gx, y: npcData.gy + 40, message: npcData.message });
+                    } else { // For all rect-based objects (brick, pipe, obstacle, qblock)
+                        const rect = el.tagName.toLowerCase() === 'rect' ? el : el.querySelector('rect');
+                        if (rect) {
+                            obj.x = parseFloat(rect.getAttribute('x'));
+                            obj.y = parseFloat(rect.getAttribute('y'));
+                            obj.w = parseFloat(rect.getAttribute('width'));
+                            obj.h = parseFloat(rect.getAttribute('height'));
+                        }
+                    }
+                    
+                    if (obj.x !== undefined && obj.y !== undefined) {
+                        objs.push(obj);
                     }
                 });
                 return objs;
             }
 
-            function clearLevel() {
-                svg.querySelectorAll('.editor-placed').forEach(el => el.remove());
+            function clearAllPlacedObjects() {
+                // Remove all elements marked as 'editor-placed'
+                svg.querySelectorAll('.editor-placed').forEach(el => {
+                    el.remove();
+                });
+
+                // Remove dynamically created coins (small yellow circles, not the sun)
+                // The sun has id="sun" and r="40". Coins have r="8".
                 svg.querySelectorAll('circle[fill="#FFD700"]').forEach(circle => {
                     if (circle.id !== 'sun' && parseFloat(circle.getAttribute('r')) < 10) {
                         circle.remove();
                     }
                 });
-                blocks = [];
-                npcs = [];
+
+                // Update the 'blocks' array to remove editor-placed blocks
+                // Ensure 'element' property is stored in blocks array for this to work
+                blocks = blocks.filter(b => {
+                    // Keep blocks that don't have an associated DOM element (shouldn't happen after fix)
+                    // or whose associated DOM element does not have the 'editor-placed' class.
+                    // This effectively keeps initial blocks and removes user-placed ones.
+                    return !b.element || !b.element.classList.contains('editor-placed');
+                });
+
+                // Update the 'npcs' array to remove editor-placed npcs
+                npcs = npcs.filter(n => n.element && !n.element.classList.contains('editor-placed'));
             }
 
             function loadLevelFromData(data) {
-                clearLevel();
-                data.forEach(o => createObject(o.type, o.x, o.y, o.w, o.h, o.message));
+                clearAllPlacedObjects();
+                // Re-create objects from loaded data
+                data.forEach(o=> createObject(o.type, o.x, o.y, o.w, o.h, o.message));
             }
 
             saveLevelBtn.addEventListener('click', ()=>{
@@ -473,6 +584,20 @@
                 const data = collectLevelData();
                 localStorage.setItem('level_'+name, JSON.stringify(data));
                 alert('บันทึกด่านแล้ว: '+name);
+            });
+            
+            loadLevelBtn.addEventListener('click', ()=>{
+                const name = (levelNameEl.value || 'level1').trim();
+                const raw = localStorage.getItem('level_'+name);
+                if(!raw){ alert('ไม่พบด่าน: '+name); return; }
+                try {
+                    const data = JSON.parse(raw);
+                    loadLevelFromData(data);
+                    alert('โหลดด่าน: '+name);
+                } catch(e) {
+                    alert('ข้อมูลด่านเสียหาย: '+name);
+                    console.error("Error parsing or loading level data:", e);
+                }
             });
 
             exportLevelBtn.addEventListener('click', ()=>{
@@ -484,30 +609,31 @@
                 document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
             });
 
-            loadLevelBtn.addEventListener('click', ()=>{
-                const name = (levelNameEl.value || 'level1').trim();
-                const raw = localStorage.getItem('level_'+name);
-                if(!raw){ alert('ไม่พบด่าน: '+name); return; }
-                const data = JSON.parse(raw);
-                loadLevelFromData(data);
-                alert('โหลดด่าน: '+name);
+            loadPremadeLevelBtn.addEventListener('click', async () => {
+                const levelFile = premadeLevelSelect.value;
+                if (!levelFile) {
+                    alert('กรุณาเลือกด่าน');
+                    return;
+                }
+                try {
+                    const response = await fetch(levelFile);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const levelData = await response.json();
+                    loadLevelFromData(levelData);
+                    alert(`โหลดด่าน '${premadeLevelSelect.options[premadeLevelSelect.selectedIndex].text}' สำเร็จ`);
+                } catch (e) {
+                    console.error(`Failed to load level ${levelFile}:`, e);
+                    alert(`ไม่สามารถโหลดไฟล์ด่าน: ${levelFile}`);
+                }
             });
 
             clearLevelBtn.addEventListener('click', ()=>{
                 if(!confirm('ล้างวัตถุที่วางทั้งหมด?')) return;
-                clearLevel();
+                clearAllPlacedObjects();
             });
 
-            // Initialize blocks and npcs as empty arrays since initial elements are removed from HTML
-            let blocks = [];
-            let npcs = [];
-
-            // The following code was for initializing blocks and npcs from hardcoded HTML elements.
-            // Since those elements are removed, this block is no longer needed or should be adapted
-            // if there are other non-editor-placed elements that need to be tracked.
-            /*
-            const blockRects = document.querySelectorAll('g.q-block rect, rect[fill="#8B4513"], rect[fill="#654321"]'); // This will now be empty
-            const blocks = Array.from(blockRects).map(r => {
+            const blockRects = document.querySelectorAll('g.q-block rect, rect[fill="#8B4513"], rect[fill="#654321"]');
+            let blocks = Array.from(blockRects).map(r => {
                 const isQBlock = r.parentNode.classList?.contains('q-block');
                 if (isQBlock) {
                     // Initial Q-blocks are not editor-placed, so their parent 'g' will not have the class.
@@ -532,7 +658,7 @@
             
             // Initialize NPCs array from existing SVG elements
             const initialNpcElements = document.querySelectorAll('g.npc-object');
-            const npcs = Array.from(initialNpcElements).map(g => {
+            let npcs = Array.from(initialNpcElements).map(g => {
                 const body = g.querySelector('circle:nth-child(1)');
                 const textEl = g.querySelector('text');
                 const cx = parseFloat(body.getAttribute('cx'));
@@ -549,8 +675,11 @@
                     element: g
                 };
             });
-            */
-            const enemies = [];
+
+            const enemies = [
+                { left: 680, right: 720, top: 295, bottom: 328 },
+                { left: 1080, right: 1120, top: 295, bottom: 328 }
+            ];
             const hurtCooldownMax = 30;
             // jumping physics
             let vy = 0;
@@ -565,8 +694,8 @@
 
             function resetGameState() {
                 x = 50;
-                y = -88; // Reset Mario's translateY to start on the ground
-                vx = 0; // horizontal velocity
+                y = 0;
+                vx = 0;
                 vy = 0;
                 onSurface = true;
                 coins = 0;
@@ -574,10 +703,7 @@
                 coinCountEl.textContent = coins;
                 lifeCountEl.textContent = lives;
                 hurtCooldown = 0;
-                // Reset used status on all q-blocks
-                for (const b of blocks) {
-                    if (b.isQBlock) b.used = false;
-                }
+                for (const b of blocks) b.used = false;
             }
 
             let currentMessageTimeout; // For NPC messages
@@ -613,8 +739,8 @@
                 lives -= 1;
                 lifeCountEl.textContent = lives;
                 hurtCooldown = hurtCooldownMax;
-                x = 50; // Reset Mario's horizontal position
-                y = -88; // Reset Mario's translateY to start on the ground
+                x = 50;
+                y = 0;
                 vx = 0;
                 vy = 0;
                 onSurface = true;
@@ -778,13 +904,13 @@
 
             // animation loop for gravity and smooth movement
             function loop(){
-                if (!freeCameraMode) { // Only apply Mario physics if not in free camera mode
+                if (gameStarted && !freeCameraMode) { // Only apply Mario physics if game has started and not in free camera mode
                     // apply physics
                     vy += gravity * (vy > 0 ? fallMultiplier : 1);
-                    y += vy; // Update Mario's translateY
+                    y += vy;
                     onSurface = false;
                     if (338 + y > groundLevelY) { y = groundLevelY - 338; vy = 0; onSurface = true; } // Land on ground
-                    if (hurtCooldown > 0) hurtCooldown -= 1; // Decrease hurt cooldown
+                    if (hurtCooldown > 0) hurtCooldown -= 1;
 
                     // collision with question blocks from below to release coin
                     // head absolute position
@@ -919,39 +1045,12 @@
             }
             requestAnimationFrame(loop);
 
+            // Load a default empty level or a pre-defined one on start
             document.addEventListener('DOMContentLoaded', () => {
-                const levelSelectModal = document.getElementById('level-select-modal');
-                const levelSelectContainer = document.getElementById('level-select-container');
-
-                fetch('level.json')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('ไม่สามารถโหลดไฟล์ level.json ได้');
-                        }
-                        return response.json();
-                    })
-                    .then(levels => {
-                        levelSelectContainer.innerHTML = ''; // Clear any existing content
-                        levels.forEach(level => {
-                            const button = document.createElement('button');
-                            button.textContent = level.name;
-                            button.style.display = 'block';
-                            button.style.width = '100%';
-                            button.style.padding = '10px 15px';
-                            button.style.marginBottom = '10px';
-                            button.style.fontSize = '16px';
-                            button.style.cursor = 'pointer';
-                            button.onclick = () => {
-                                loadLevelFromData(level.data);
-                                levelSelectModal.style.display = 'none';
-                            };
-                            levelSelectContainer.appendChild(button);
-                        });
-                    })
-                    .catch(error => {
-                        console.error('เกิดข้อผิดพลาดในการโหลดด่าน:', error);
-                        levelSelectContainer.innerHTML = `<p style="color:red;">${error.message}</p>`;
-                    });
+                // To start with a blank slate, we just do nothing.
+                // Or to load a default level from localStorage:
+                // const defaultLevel = localStorage.getItem('level_default');
+                // if (defaultLevel) loadLevelFromData(JSON.parse(defaultLevel));
             });
         })();
     </script>

@@ -27,7 +27,7 @@
 
         /* Main Container */
         #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
-        #sidebar { width: 250px; background-color: #2b2d42; border-right: 2px solid #3d405b; padding: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 5; overflow-y: auto; }
+        #sidebar { width: 260px; background-color: #2b2d42; border-right: 2px solid #3d405b; padding: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 5; overflow-y: auto; }
         #sidebar h3 { font-size: 14px; color: #8d99ae; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
         #dynamic-buttons { display: flex; flex-direction: column; gap: 8px; }
 
@@ -41,19 +41,18 @@
         .prop-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
         .prop-group label { font-size: 12px; color: #8d99ae; font-weight: bold; }
         .input-unit { display: flex; align-items: center; gap: 4px; }
-        .input-unit input {
-            width: 75px;
+        .input-unit input, .input-unit select {
+            width: 100px;
             background: #101014;
             border: 1px solid #4a4e69;
             color: #2ecc71;
             border-radius: 4px;
             padding: 5px 6px;
             font-weight: bold;
-            text-align: right;
-            font-size: 13px;
+            font-size: 12px;
             outline: none;
         }
-        .input-unit input:focus { border-color: #4ea8de; }
+        .input-unit input:focus, .input-unit select:focus { border-color: #4ea8de; }
         .input-unit span { font-size: 11px; color: #8d99ae; }
 
         /* Workspace & Canvas */
@@ -137,12 +136,8 @@
         .delete-btn { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; background-color: #e74c3c; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.4); z-index: 20; }
         .game-object:hover .delete-btn, .game-object.selected .delete-btn { display: flex; }
 
-        /* Resize Handles (ขอบวัตถุตลอดทั้งแนว + มุมทั้ง 4) */
-        .resize-handle {
-            position: absolute;
-            z-index: 10;
-            display: none;
-        }
+        /* Resize Handles (ดึงขอบ + 4 มุม) */
+        .resize-handle { position: absolute; z-index: 10; display: none; }
         .game-object:hover .resize-handle, .game-object.selected .resize-handle { display: block; }
 
         .resize-handle.handle-t { top: -6px; left: 8px; right: 8px; height: 12px; cursor: ns-resize; }
@@ -153,26 +148,17 @@
         .resize-handle.handle-t:hover, .resize-handle.handle-b:hover { background: rgba(241, 196, 15, 0.35); border-top: 2px solid #f1c40f; border-bottom: 2px solid #f1c40f; }
         .resize-handle.handle-l:hover, .resize-handle.handle-r:hover { background: rgba(241, 196, 15, 0.35); border-left: 2px solid #f1c40f; border-right: 2px solid #f1c40f; }
 
-        .resize-handle.handle-tl,
-        .resize-handle.handle-tr,
-        .resize-handle.handle-bl,
-        .resize-handle.handle-br {
-            width: 10px;
-            height: 10px;
-            background-color: #f1c40f;
-            border: 1px solid #111;
-            border-radius: 2px;
-            z-index: 15;
+        .resize-handle.handle-tl, .resize-handle.handle-tr, .resize-handle.handle-bl, .resize-handle.handle-br {
+            width: 10px; height: 10px; background-color: #f1c40f; border: 1px solid #111; border-radius: 2px; z-index: 15;
         }
-
         .resize-handle.handle-tl { top: -5px; left: -5px; cursor: nwse-resize; }
         .resize-handle.handle-tr { top: -5px; right: -5px; cursor: nesw-resize; }
         .resize-handle.handle-bl { bottom: -5px; left: -5px; cursor: nesw-resize; }
         .resize-handle.handle-br { bottom: -5px; right: -5px; cursor: nwse-resize; }
 
-        .pipe-badge { position: absolute; top: 2px; left: 2px; background-color: rgba(0, 0, 0, 0.7); color: #2ecc71; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-family: monospace; pointer-events: none; }
+        .pipe-badge { position: absolute; top: 2px; left: 2px; background-color: rgba(0, 0, 0, 0.75); color: #2ecc71; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-family: monospace; pointer-events: none; }
 
-        /* Playtest Modal Overlay */
+        /* Modal Overlay */
         #playtest-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); z-index: 9999; display: none; align-items: center; justify-content: center; }
         #playtest-container { width: 90vw; height: 88vh; background: #1a252f; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; border: 2px solid #34495e; }
         #playtest-header { background: #2c3e50; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #34495e; }
@@ -201,7 +187,7 @@
                 <p style="font-size: 12px; color: #aaa;">กำลังโหลด data/objects.json...</p>
             </div>
 
-            <!-- 🔹 พาเนลปรับขนาดและตำแหน่งวัตถุ (Inspector) -->
+            <!-- Inspector Panel -->
             <div id="inspector-panel">
                 <h3>คุณสมบัติวัตถุ</h3>
                 <div class="prop-group">
@@ -232,6 +218,16 @@
                         <span>px</span>
                     </div>
                 </div>
+
+                <!-- 🔹 เมนูเชื่อมต่อท่อปลายทาง (แสดงเฉพาะวัตถุประเภท Pipe) -->
+                <div id="pipe-link-group" class="prop-group" style="display: none;">
+                    <label for="sel-target-pipe">มุดไปท่อ:</label>
+                    <div class="input-unit">
+                        <select id="sel-target-pipe">
+                            <option value="">-- ไม่วาร์ป --</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -251,7 +247,6 @@
                 <svg id="svg-layer"></svg>
             </div>
 
-            <!-- Zoom UI Overlay -->
             <div id="zoom-controls">
                 <button onclick="changeZoom(-0.1)">-</button>
                 <span id="zoom-text">100%</span>
@@ -261,7 +256,6 @@
         </div>
     </div>
 
-    <!-- Modal Popup สำหรับ Playtest -->
     <div id="playtest-modal">
         <div id="playtest-container">
             <div id="playtest-header">
@@ -273,28 +267,25 @@
     </div>
 
     <script>
-        // State Global Variables
         const workspace = document.getElementById('workspace');
         const canvas = document.getElementById('canvas');
         const svgLayer = document.getElementById('svg-layer');
         const dynamicButtonsContainer = document.getElementById('dynamic-buttons');
         const zoomText = document.getElementById('zoom-text');
 
-        // Inspector UI Elements
         const inspectorPanel = document.getElementById('inspector-panel');
         const inpW = document.getElementById('inp-w');
         const inpH = document.getElementById('inp-h');
         const inpX = document.getElementById('inp-x');
         const inpY = document.getElementById('inp-y');
+        const pipeLinkGroup = document.getElementById('pipe-link-group');
+        const selTargetPipe = document.getElementById('sel-target-pipe');
 
         let currentlySelectedObj = null;
         let loadedObjectTypes = {};
         let pipeCounter = 1;
         const gridSize = 20;
 
-        let tempLevelData = [];
-
-        // Viewport Pan & Zoom State
         let scale = 1;
         let viewX = 0;
         let viewY = 0;
@@ -359,11 +350,48 @@
             if (obj) {
                 obj.classList.add('selected');
                 inspectorPanel.style.display = 'block';
+
+                if (obj.dataset.type === 'pipe') {
+                    pipeLinkGroup.style.display = 'flex';
+                    populatePipeOptions();
+                } else {
+                    pipeLinkGroup.style.display = 'none';
+                }
+
                 updateInspectorValues();
             } else {
                 inspectorPanel.style.display = 'none';
             }
         }
+
+        function populatePipeOptions() {
+            selTargetPipe.innerHTML = '<option value="">-- ไม่วาร์ป --</option>';
+            const pipes = document.querySelectorAll('.game-object[data-type="pipe"]');
+
+            pipes.forEach(pipe => {
+                if (currentlySelectedObj && pipe.dataset.pipeId !== currentlySelectedObj.dataset.pipeId) {
+                    const opt = document.createElement('option');
+                    opt.value = pipe.dataset.pipeId;
+                    opt.textContent = `ท่อ ${pipe.dataset.pipeId}`;
+                    selTargetPipe.appendChild(opt);
+                }
+            });
+
+            if (currentlySelectedObj && currentlySelectedObj.dataset.targetPipeId) {
+                selTargetPipe.value = currentlySelectedObj.dataset.targetPipeId;
+            }
+        }
+
+        selTargetPipe.addEventListener('change', () => {
+            if (!currentlySelectedObj || currentlySelectedObj.dataset.type !== 'pipe') return;
+            const target = selTargetPipe.value;
+            if (target) {
+                currentlySelectedObj.dataset.targetPipeId = target;
+            } else {
+                delete currentlySelectedObj.dataset.targetPipeId;
+            }
+            updatePipeLines();
+        });
 
         function updateInspectorValues() {
             if (!currentlySelectedObj) return;
@@ -371,9 +399,12 @@
             inpH.value = parseInt(currentlySelectedObj.style.height) || 0;
             inpX.value = parseInt(currentlySelectedObj.style.left) || 0;
             inpY.value = parseInt(currentlySelectedObj.style.top) || 0;
+
+            if (currentlySelectedObj.dataset.type === 'pipe') {
+                selTargetPipe.value = currentlySelectedObj.dataset.targetPipeId || '';
+            }
         }
 
-        // Event Listeners สำหรับการพิมพ์เปลี่ยนขนาด/ตำแหน่งผ่าน Input PX
         inpW.addEventListener('input', () => {
             if (!currentlySelectedObj) return;
             let val = Math.max(1, parseInt(inpW.value) || 1);
@@ -432,10 +463,6 @@
                 obj.style.width = (data.w ?? 60) + 'px';
                 obj.style.height = (data.h ?? 80) + 'px';
                 obj.innerHTML = `<div class="pipe-badge">${pipeId}</div>`;
-            } else if (type === 'npc') {
-                obj.style.width = (data.w ?? 40) + 'px';
-                obj.style.height = (data.h ?? 50) + 'px';
-                obj.dataset.message = data.message ?? "สวัสดี!";
             } else {
                 obj.style.width = (data.w ?? 40) + 'px';
                 obj.style.height = (data.h ?? (type === 'cloud' || type === 'sun' ? 40 : (data.w ?? 40))) + 'px';
@@ -507,21 +534,16 @@
                 } 
                 else if (mode.startsWith('resize-')) {
                     const dir = mode.replace('resize-', '');
-                    let newW = startW;
-                    let newH = startH;
-                    let newX = startLeft;
-                    let newY = startTop;
+                    let newW = startW, newH = startH, newX = startLeft, newY = startTop;
 
-                    if (dir.includes('r')) {
-                        newW = Math.max(gridSize, Math.round((startW + dx) / gridSize) * gridSize);
-                    } else if (dir.includes('l')) {
+                    if (dir.includes('r')) newW = Math.max(gridSize, Math.round((startW + dx) / gridSize) * gridSize);
+                    else if (dir.includes('l')) {
                         newW = Math.max(gridSize, Math.round((startW - dx) / gridSize) * gridSize);
                         newX = startLeft + (startW - newW);
                     }
 
-                    if (dir.includes('b')) {
-                        newH = Math.max(gridSize, Math.round((startH + dy) / gridSize) * gridSize);
-                    } else if (dir.includes('t')) {
+                    if (dir.includes('b')) newH = Math.max(gridSize, Math.round((startH + dy) / gridSize) * gridSize);
+                    else if (dir.includes('t')) {
                         newH = Math.max(gridSize, Math.round((startH - dy) / gridSize) * gridSize);
                         newY = startTop + (startH - newH);
                     }
@@ -533,7 +555,6 @@
                     updatePipeLines();
                 }
 
-                // อัปเดตตัวเลขบน Inspector Panel แบบ Real-time ขณะลากหรือยืดขยาย
                 updateInspectorValues();
             }
 
@@ -572,7 +593,6 @@
             });
         }
 
-        // Mouse Pan Canvas
         workspace.addEventListener('pointerdown', (e) => {
             if (e.target === workspace || e.target === canvas || e.target === svgLayer) {
                 isPanning = true;
@@ -592,11 +612,9 @@
 
         window.addEventListener('pointerup', () => isPanning = false);
 
-        // Zoom (Mouse Wheel & Buttons)
         workspace.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const zoomSpeed = 0.0015;
-            const delta = -e.deltaY * zoomSpeed;
+            const delta = -e.deltaY * 0.0015;
             const newScale = Math.min(Math.max(0.2, scale + delta), 2.5);
 
             const rect = workspace.getBoundingClientRect();
@@ -614,16 +632,12 @@
         }, { passive: false });
 
         function changeZoom(delta) {
-            const newScale = Math.min(Math.max(0.2, scale + delta), 2.5);
-            scale = newScale;
+            scale = Math.min(Math.max(0.2, scale + delta), 2.5);
             updateTransform();
         }
 
         function resetZoom() {
-            scale = 1;
-            viewX = 0;
-            viewY = 0;
-            updateTransform();
+            scale = 1; viewX = 0; viewY = 0; updateTransform();
         }
 
         function updateTransform() {
@@ -631,11 +645,10 @@
             zoomText.innerText = Math.round(scale * 100) + '%';
         }
 
-        // Keyboard Pan (WASD & ลูกศร)
         window.addEventListener('keydown', (e) => {
             const modal = document.getElementById('playtest-modal');
             if (modal && modal.style.display === 'flex') return;
-            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
 
             if (e.code === 'KeyW' || e.code === 'ArrowUp') editorKeys.up = true;
             if (e.code === 'KeyS' || e.code === 'ArrowDown') editorKeys.down = true;
@@ -657,16 +670,13 @@
             if (editorKeys.left) { viewX += keyboardPanSpeed; moved = true; }
             if (editorKeys.right) { viewX -= keyboardPanSpeed; moved = true; }
 
-            if (moved) {
-                updateTransform();
-            }
+            if (moved) updateTransform();
             requestAnimationFrame(editorLoop);
         }
 
-        // Playtest & JSON
         function startPlaytest() {
             const objects = document.querySelectorAll('.game-object');
-            tempLevelData = [];
+            const levelData = [];
 
             objects.forEach(obj => {
                 const type = obj.dataset.type;
@@ -682,12 +692,10 @@
                     data.pipeId = obj.dataset.pipeId;
                     if (obj.dataset.targetPipeId) data.targetPipeId = obj.dataset.targetPipeId;
                 }
-                if (type === 'npc') data.message = obj.dataset.message || 'สวัสดี!';
-
-                tempLevelData.push(data);
+                levelData.push(data);
             });
 
-            window.tempLevelData = tempLevelData;
+            window.tempLevelData = levelData;
 
             const modal = document.getElementById('playtest-modal');
             const iframe = document.getElementById('playtest-iframe');
@@ -703,18 +711,12 @@
         function closePlaytest() {
             const modal = document.getElementById('playtest-modal');
             const iframe = document.getElementById('playtest-iframe');
-
             modal.style.display = 'none';
             iframe.src = 'about:blank';
         }
 
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const modal = document.getElementById('playtest-modal');
-                if (modal && modal.style.display === 'flex') {
-                    closePlaytest();
-                }
-            }
+            if (e.key === 'Escape') closePlaytest();
         });
 
         function loadLevelData(data) {
@@ -741,8 +743,6 @@
                     data.pipeId = obj.dataset.pipeId;
                     if (obj.dataset.targetPipeId) data.targetPipeId = obj.dataset.targetPipeId;
                 }
-                if (type === 'npc') data.message = obj.dataset.message;
-
                 levelData.push(data);
             });
 
@@ -753,9 +753,7 @@
             dlAnchorElem.click();
         }
 
-        function importJSON() {
-            document.getElementById('file-input').click();
-        }
+        function importJSON() { document.getElementById('file-input').click(); }
 
         function handleFileSelect(event) {
             const file = event.target.files[0];

@@ -1,369 +1,301 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
-    <title>2D Platformer Game</title>
+    <title>2D Game - Multi-Controller Mode</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            margin: 0;
-            background-color: #1a1a1a;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100vh;
-            object-fit: contain;
-            background-color: #87CEEB;
-            border: 3px solid #fff;
-        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { width: 100%; height: 100vh; object-fit: contain; background: #87CEEB; border: 3px solid #fff; }
     </style>
 </head>
-
 <body>
 
     <canvas id="gameCanvas" width="800" height="400"></canvas>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-
-        let levelInstances = [];
-        const loadedObjectTypes = {};
-        const loadedCharacters = {};
-
-        // พิกัดจุดเกิดของผู้เล่น (ตั้งค่าเริ่มต้นไว้ก่อน)
-        let spawnX = 50;
-        let spawnY = 100;
-
-        function svgToImage(svgString) {
-            const img = new Image();
-            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            img.src = URL.createObjectURL(blob);
-            return img;
-        }
-
-        // 1. ระบบโหลดไฟล์ JSON
-        async function loadGameData() {
-            try {
-                const [objectsRes, charsRes] = await Promise.all([
-                    fetch('data/objects.json'),
-                    fetch('data/characters.json')
-                ]);
-
-                if (window.parent && window.parent.tempLevelData && window.parent.tempLevelData.length > 0) {
-                    levelInstances = window.parent.tempLevelData;
-                } else {
-                    const levelRes = await fetch('data/level.json');
-                    levelInstances = await levelRes.json();
-                }
-
-                // 🔹 ดึงจุดเริ่มต้น (player_start) มากำหนดพิกัดให้ตัวละคร
-                const startObjs = levelInstances.filter(item => item.type === 'player_start');
-                if (startObjs.length > 0) {
-                    spawnX = startObjs[0].x;
-                    spawnY = startObjs[0].y;
-                    player.x = spawnX;
-                    player.y = spawnY;
-                }
-
-                // 🔹 ลบ player_start ออกจากฉากทั้งหมด
-                levelInstances = levelInstances.filter(item => item.type !== 'player_start');
-
-                const objectsData = await objectsRes.json();
-                const charsData = await charsRes.json();
-
-                for (const [typeKey, objDef] of Object.entries(objectsData)) {
-                    loadedObjectTypes[typeKey] = {
-                        name: objDef.name,
-                        solid: objDef.solid ?? true,
-                        img: svgToImage(objDef.svg)
-                    };
-                }
-
-                charsData.characters.forEach(char => {
-                    loadedCharacters[char.id] = {
-                        name: char.name,
-                        imgNormal: svgToImage(char.svgNormal),
-                        imgCrouch: svgToImage(char.svgCrouch)
-                    };
-                });
-
-                gameLoop();
-            } catch (error) {
-                console.error("เกิดข้อผิดพลาดในการโหลดไฟล์ JSON:", error);
-            }
-        }
-
-        // 2. ตัวแปรเกม
-        const worldWidth = 5000;
-        const gravity = 0.6;
-        let cameraX = 0;
-
-        // ระบบควบคุมแบบดั้งเดิม (รองรับ Left, Right, Up, Down)
-        const keys = { left: false, right: false, up: false, down: false };
-
-        const player = {
-            x: spawnX,
-            y: spawnY,
-            normalHeight: 50,
-            crouchHeight: 25,
-            width: 40,
-            height: 50,
-            vx: 0,
-            vy: 0,
-            speed: 5,         // ความเร็วเดินปกติ
-            crouchSpeed: 2.5, // ความเร็วหมอบเดิน
-            jumpForce: -12,
-            isGrounded: false,
-            isCrouching: false,
-            // สถานะมุดท่อ
-            isPipeTraversing: false,
-            pipeState: 'none', // 'entering' | 'exiting'
-            pipeTarget: null,
-            pipeSpeed: 2,
-            selectedCharacterId: "hero_red"
+        // ==========================================
+        // 🛠️ 1. GAME CONFIGURATION (ตั้งค่าโหมดการเล่น)
+        // ==========================================
+        // ตรวจจับ mode จาก URL Query string เช่น index.html?mode=manual
+        // หากไม่มีจะดึงค่าตั้งต้น 'AUTO' หรือ 'MANUAL'
+        const urlParams = new URLSearchParams(window.location.search);
+        const GAME_CONFIG = {
+            mode: urlParams.get('mode')?.toUpperCase() || 'MANUAL' // เลือก: 'AUTO' หรือ 'MANUAL'
         };
 
-        // Event Listeners สำหรับการกดปุ่ม (WASD + ลูกศร + Space)
-        window.addEventListener("keydown", (e) => {
-            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
-            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
-            if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") keys.up = true;
-            if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = true;
-        });
+        const canvas = document.getElementById("gameCanvas"), ctx = canvas.getContext("2d");
+        let manifest = [], currentLevelIdx = 0, level = [];
+        let objs = {}, chars = {}, spawn = { x: 50, y: 100 }, cameraX = 0;
+        let levelCleared = false, gameCleared = false;
 
-        window.addEventListener("keyup", (e) => {
-            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
-            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
-            if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") keys.up = false;
-            if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
-        });
+        // ==========================================
+        // 🎮 2. KEYBOARD MAPPING (รองรับเดินซ้าย-ขวา)
+        // ==========================================
+        const keys = { up: 0, down: 0, left: 0, right: 0 };
+        const keyMap = { 
+            ArrowUp: 'up', KeyW: 'up', Space: 'up', 
+            ArrowDown: 'down', KeyS: 'down',
+            ArrowLeft: 'left', KeyA: 'left',
+            ArrowRight: 'right', KeyD: 'right'
+        };
 
-        function isColliding(rect1, instance) {
-            const objH = instance.h ?? instance.w;
-            return rect1.x < instance.x + instance.w &&
-                rect1.x + rect1.width > instance.x &&
-                rect1.y < instance.y + objH &&
-                rect1.y + rect1.height > instance.y;
-        }
-
-        function canStandUp() {
-            const heightDiff = player.normalHeight - player.crouchHeight;
-            const standingBox = {
-                x: player.x,
-                y: player.y - heightDiff,
-                width: player.width,
-                height: player.normalHeight
-            };
-
-            for (let instance of levelInstances) {
-                const typeDef = loadedObjectTypes[instance.type];
-                if (typeDef && typeDef.solid && isColliding(standingBox, instance)) {
-                    return false;
-                }
+        window.onkeydown = window.onkeyup = e => {
+            if (keyMap[e.code]) {
+                keys[keyMap[e.code]] = e.type === 'keydown' ? 1 : 0;
             }
-            return true;
-        }
+        };
 
-        function checkPipeEnter() {
-            if (!keys.down || !player.isGrounded || player.isPipeTraversing) return;
+        const p = {
+            x: 50, y: 100, w: 40, h: 50, normH: 50, crouchH: 25,
+            vx: 0, vy: 0, speed: 5, crouchSpeed: 2.5, jump: -12,
+            grounded: false, crouching: false,
+            pipe: { active: false, state: 'none', target: null },
+            charId: "hero_red"
+        };
 
-            for (let instance of levelInstances) {
-                if (instance.type === 'pipe' && instance.targetPipeId) {
-                    const playerCenterX = player.x + (player.width / 2);
-                    const pipeCenterX = instance.x + (instance.w / 2);
+        const svgToImg = svg => { const img = new Image(); img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })); return img; };
+        const collide = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + (b.h ?? b.w) && a.y + a.h > b.y;
+        const isSolid = inst => objs[inst.type]?.solid;
+        const resetPlayer = () => Object.assign(p, { x: spawn.x, y: spawn.y, vx: 0, vy: 0, crouching: false, h: p.normH });
 
-                    const isOnTop = Math.abs(playerCenterX - pipeCenterX) < 20 &&
-                                    Math.abs((player.y + player.height) - instance.y) < 5;
+        // โหลดข้อมูล
+        async function loadGameData() {
+            try {
+                const [oRes, cRes] = await Promise.all([fetch('data/objects.json'), fetch('data/characters.json')]);
+                const oData = await oRes.json(), cData = await cRes.json();
+                Object.entries(oData).forEach(([k, v]) => objs[k] = { ...v, solid: v.solid ?? true, img: svgToImg(v.svg) });
+                cData.characters.forEach(c => chars[c.id] = { name: c.name, norm: svgToImg(c.svgNormal), crouch: svgToImg(c.svgCrouch) });
 
-                    if (isOnTop) {
-                        const targetObj = levelInstances.find(item => item.pipeId === instance.targetPipeId);
-                        if (targetObj) {
-                            player.isPipeTraversing = true;
-                            player.pipeState = 'entering';
-                            player.pipeTarget = targetObj;
-                            player.x = pipeCenterX - (player.width / 2);
-                            player.vx = 0;
-                            player.vy = 0;
-                            break;
-                        }
+                if (window.parent?.tempManifest) {
+                    manifest = window.parent.tempManifest;
+                    currentLevelIdx = window.parent.tempCurrentIdx || 0;
+                    if (window.parent.tempCurrentLevelData) {
+                        setupLevelObjects(window.parent.tempCurrentLevelData);
+                        loop();
+                        return;
                     }
+                } else {
+                    const mRes = await fetch('data/levels_manifest.json');
+                    manifest = await mRes.json();
+                }
+
+                await loadLevelByManifestIndex(currentLevelIdx);
+                loop();
+            } catch (e) { console.error("Load Error:", e); }
+        }
+
+        async function loadLevelByManifestIndex(idx) {
+            if (idx >= manifest.length) { gameCleared = true; return; }
+            currentLevelIdx = idx;
+            levelCleared = false;
+            gameCleared = false;
+
+            const targetFile = manifest[idx].file;
+            try {
+                const res = await fetch(targetFile);
+                const levelData = await res.json();
+                setupLevelObjects(levelData);
+            } catch (err) {
+                setupLevelObjects([]);
+            }
+        }
+
+        function setupLevelObjects(levelData) {
+            level = JSON.parse(JSON.stringify(levelData));
+            const start = level.find(i => i.type === 'player_start');
+            spawn = start ? { x: start.x, y: start.y } : { x: 50, y: 100 };
+            level = level.filter(i => i.type !== 'player_start');
+            resetPlayer();
+        }
+
+        function triggerNextLevel() {
+            if (levelCleared) return;
+            levelCleared = true;
+
+            if (window.parent && typeof window.parent.closePlaytest === 'function' && window.parent.tempManifest) {
+                setTimeout(() => window.parent.closePlaytest(), 800);
+                return;
+            }
+
+            setTimeout(async () => {
+                if (currentLevelIdx + 1 < manifest.length) {
+                    await loadLevelByManifestIndex(currentLevelIdx + 1);
+                } else {
+                    gameCleared = true;
+                }
+            }, 1500);
+        }
+
+        const canStand = () => !level.some(i => isSolid(i) && collide({ x: p.x, y: p.y - (p.normH - p.crouchH), w: p.w, h: p.normH }, i));
+        
+        function checkPipe() {
+            if (!keys.down || !p.grounded || p.pipe.active) return;
+            const pipeObj = level.find(i => i.type === 'pipe' && i.targetPipeId && 
+                Math.abs((p.x + p.w / 2) - (i.x + i.w / 2)) < 20 && Math.abs((p.y + p.h) - i.y) < 5);
+            if (pipeObj) {
+                const dest = level.find(i => i.pipeId === pipeObj.targetPipeId);
+                if (dest) {
+                    p.pipe = { active: true, state: 'entering', target: dest };
+                    p.x = pipeObj.x + pipeObj.w / 2 - p.w / 2;
+                    p.vx = p.vy = 0;
                 }
             }
         }
 
-        function resetPlayer() {
-            player.x = spawnX;
-            player.y = spawnY;
-            player.vx = 0;
-            player.vy = 0;
-            player.isCrouching = false;
-            player.height = player.normalHeight;
+        // ==========================================
+        // 🕹️ 3. CONTROLLER STRATEGIES (แยกระบบเคลื่อนที่)
+        // ==========================================
+        
+        // 3.1 โหมดวิ่งเองอัตโนมัติ (Auto-Runner)
+        function updateAutoRunnerMovement() {
+            p.vx = p.crouching ? p.crouchSpeed : p.speed;
         }
 
-        // 3. ระบบคำนวณการเคลื่อนที่และการชน
+        // 3.2 โหมดควบคุมเองอิสระ (Manual Control)
+        function updateManualMovement() {
+            const moveSpeed = p.crouching ? p.crouchSpeed : p.speed;
+            
+            if (keys.left) {
+                p.vx = -moveSpeed;
+            } else if (keys.right) {
+                p.vx = moveSpeed;
+            } else {
+                p.vx = 0; // หยุดเมื่อไม่กดปุ่ม
+            }
+        }
+
+        // ==========================================
+        // 🔄 4. GAME UPDATE LOOP
+        // ==========================================
         function update() {
-            // ระบบย้ายตำแหน่งขณะมุดท่อ
-            if (player.isPipeTraversing) {
-                if (player.pipeState === 'entering') {
-                    player.y += player.pipeSpeed;
-                    if (player.y >= player.y + player.height || player.y > player.pipeTarget.y) {
-                        player.x = player.pipeTarget.x + (player.pipeTarget.w / 2) - (player.width / 2);
-                        player.y = player.pipeTarget.y + player.pipeTarget.h;
-                        player.pipeState = 'exiting';
+            if (gameCleared || levelCleared) return;
+
+            // การย้ายผ่านท่อ
+            if (p.pipe.active) {
+                if (p.pipe.state === 'entering') {
+                    p.y += 2;
+                    if (p.y >= p.pipe.target.y) {
+                        p.x = p.pipe.target.x + p.pipe.target.w / 2 - p.w / 2;
+                        p.y = p.pipe.target.y + (p.pipe.target.h ?? p.pipe.target.w);
+                        p.pipe.state = 'exiting';
                     }
-                } else if (player.pipeState === 'exiting') {
-                    player.y -= player.pipeSpeed;
-                    if (player.y <= player.pipeTarget.y - player.height) {
-                        player.y = player.pipeTarget.y - player.height;
-                        player.isPipeTraversing = false;
-                        player.pipeState = 'none';
-                        player.pipeTarget = null;
-                        player.isGrounded = true;
+                } else {
+                    p.y -= 2;
+                    if (p.y <= p.pipe.target.y - p.h) {
+                        p.y = p.pipe.target.y - p.h;
+                        p.pipe = { active: false, state: 'none', target: null };
+                        p.grounded = true;
                     }
                 }
                 return;
             }
 
-            checkPipeEnter();
+            checkPipe();
 
-            // ระบบหมอบ / ยืน
-            const heightDiff = player.normalHeight - player.crouchHeight;
-            if (keys.down && player.isGrounded) {
-                if (!player.isCrouching) {
-                    player.isCrouching = true;
-                    player.y += heightDiff;
-                    player.height = player.crouchHeight;
+            // การก้มตัว (Crouch)
+            const hDiff = p.normH - p.crouchH;
+            if (keys.down && p.grounded) {
+                if (!p.crouching) { p.crouching = true; p.y += hDiff; p.h = p.crouchH; }
+            } else if (p.crouching && canStand()) {
+                p.crouching = false; p.y -= hDiff; p.h = p.normH;
+            }
+
+            // 🎯 เลือกเรียกใช้ระบบตาม GAME_CONFIG
+            if (GAME_CONFIG.mode === 'MANUAL') {
+                updateManualMovement();
+            } else {
+                updateAutoRunnerMovement();
+            }
+
+            // คำนวณตำแหน่งพิกัด X
+            p.x += p.vx;
+
+            // ตรวจสอบการชนกับบล็อกแนวนอน & เส้นชัย
+            level.forEach(i => {
+                if ((i.type === 'goal' || i.type === 'flag') && collide(p, i)) triggerNextLevel();
+                if (isSolid(i) && collide(p, i)) {
+                    if (p.vx > 0) p.x = i.x - p.w;
+                    else if (p.vx < 0) p.x = i.x + (i.w ?? i.h);
                 }
-            } else if (player.isCrouching) {
-                if (canStandUp()) {
-                    player.isCrouching = false;
-                    player.y -= heightDiff;
-                    player.height = player.normalHeight;
+            });
+
+            if (p.x >= 4950) triggerNextLevel();
+            p.x = Math.max(0, Math.min(5000 - p.w, p.x));
+
+            // การกระโดด และแรงโน้มถ่วง (Physics Y)
+            if (keys.up && p.grounded) { p.vy = p.jump; p.grounded = false; }
+            p.vy += 0.6;
+            p.y += p.vy;
+            p.grounded = false;
+
+            level.filter(isSolid).forEach(i => {
+                if (collide(p, i)) {
+                    if (p.vy > 0) { p.y = i.y - p.h; p.vy = 0; p.grounded = true; }
+                    else if (p.vy < 0) { p.y = i.y + (i.h ?? i.w); p.vy = 0; }
                 }
-            }
+            });
 
-            // คำนวณการเคลื่อนที่แกน X (ควบคุมด้วยปุ่มซ้าย/ขวา)
-            const currentSpeed = player.isCrouching ? player.crouchSpeed : player.speed;
-            player.vx = 0;
-            if (keys.left) player.vx = -currentSpeed;
-            if (keys.right) player.vx = currentSpeed;
-
-            player.x += player.vx;
-
-            // ตรวจสอบการชนแกน X
-            for (let instance of levelInstances) {
-                const typeDef = loadedObjectTypes[instance.type];
-                if (typeDef && typeDef.solid && isColliding(player, instance)) {
-                    if (player.vx > 0) player.x = instance.x - player.width;
-                    else if (player.vx < 0) player.x = instance.x + instance.w;
-                }
-            }
-
-            // ล็อคขอบแมพ
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.width > worldWidth) player.x = worldWidth - player.width;
-
-            // กระโดด
-            if (keys.up && player.isGrounded) {
-                player.vy = player.jumpForce;
-                player.isGrounded = false;
-            }
-
-            // แรงโน้มถ่วงและการเคลื่อนที่แกน Y
-            player.vy += gravity;
-            player.y += player.vy;
-            player.isGrounded = false;
-
-            // ตรวจสอบการชนแกน Y
-            for (let instance of levelInstances) {
-                const typeDef = loadedObjectTypes[instance.type];
-                if (typeDef && typeDef.solid && isColliding(player, instance)) {
-                    const objH = instance.h ?? instance.w;
-                    if (player.vy > 0) {
-                        player.y = instance.y - player.height;
-                        player.vy = 0;
-                        player.isGrounded = true;
-                    } else if (player.vy < 0) {
-                        player.y = instance.y + objH;
-                        player.vy = 0;
-                    }
-                }
-            }
-
-            // ตกแมพ = กลับไปเกิดที่ player_start
-            if (player.y > canvas.height + 200) {
-                resetPlayer();
-            }
-
-            // กล้องตามตัวละคร
-            cameraX = (player.x + player.width / 2) - canvas.width / 2;
-            if (cameraX < 0) cameraX = 0;
-            if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+            if (p.y > canvas.height + 200) resetPlayer();
+            cameraX = Math.max(0, Math.min(5000 - canvas.width, p.x + p.w / 2 - canvas.width / 2));
         }
 
-        // 4. วาดฉาก
+        // ==========================================
+        // 🎨 5. RENDER LOOP
+        // ==========================================
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             ctx.save();
             ctx.translate(-cameraX, 0);
 
-            // Layer 1: วัตถุทั่วไป
-            for (let instance of levelInstances) {
-                if (instance.type !== 'pipe') {
-                    const typeDef = loadedObjectTypes[instance.type];
-                    if (typeDef && typeDef.img) {
-                        const h = instance.h ?? instance.w;
-                        ctx.drawImage(typeDef.img, instance.x, instance.y, instance.w, h);
-                    }
+            const drawObjects = isPipe => level.forEach(i => {
+                if ((i.type === 'pipe') === isPipe && objs[i.type]?.img) {
+                    ctx.drawImage(objs[i.type].img, i.x, i.y, i.w, i.h ?? i.w);
                 }
-            }
+            });
 
-            // Layer 2: ตัวละคร
-            const currentChar = loadedCharacters[player.selectedCharacterId];
-            if (currentChar) {
-                const activeImg = player.isCrouching ? currentChar.imgCrouch : currentChar.imgNormal;
-                ctx.drawImage(activeImg, player.x, player.y, player.width, player.height);
-            }
-
-            // Layer 3: ท่อ (วาดทับตัวละครเวลาซ่อนมุดท่อ)
-            for (let instance of levelInstances) {
-                if (instance.type === 'pipe') {
-                    const typeDef = loadedObjectTypes[instance.type];
-                    if (typeDef && typeDef.img) {
-                        const h = instance.h ?? instance.w;
-                        ctx.drawImage(typeDef.img, instance.x, instance.y, instance.w, h);
-                    }
-                }
-            }
+            drawObjects(false);
+            const c = chars[p.charId];
+            if (c) ctx.drawImage(p.crouching ? c.crouch : c.norm, p.x, p.y, p.w, p.h);
+            drawObjects(true);
 
             ctx.restore();
 
-            // UI แสดงตำแหน่ง
+            const currentLevelName = manifest[currentLevelIdx]?.name || `ด่านที่ ${currentLevelIdx + 1}`;
             ctx.fillStyle = "black";
-            ctx.font = "16px sans-serif";
-            ctx.fillText(`Controls: WASD / Arrow Keys | X: ${Math.floor(player.x)} Y: ${Math.floor(player.y)}`, 10, 25);
+            ctx.font = "bold 15px sans-serif";
+            ctx.fillText(`ด่าน: ${currentLevelName} (${currentLevelIdx + 1}/${manifest.length}) | โหมด: ${GAME_CONFIG.mode} \vert{} X:${Math.floor(p.x)}`, 10, 25);
+
+            if (levelCleared) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#2ecc71";
+                ctx.font = "bold 32px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(`🎉 ผ่านด่าน!`, canvas.width / 2, canvas.height / 2);
+                ctx.textAlign = "left";
+            }
+
+            if (gameCleared) {
+                ctx.fillStyle = "rgba(0,0,0,0.85)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#f1c40f";
+                ctx.font = "bold 36px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(`🏆 ยินดีด้วย! คุณเล่นจบทุกด่านแล้ว`, canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = "18px sans-serif";
+                ctx.fillStyle = "#fff";
+                ctx.fillText(`กด [R] เพื่อเริ่มใหม่ตั้งแต่ด่านแรก`, canvas.width / 2, canvas.height / 2 + 30);
+                ctx.textAlign = "left";
+            }
         }
 
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
+        window.addEventListener('keydown', async e => {
+            if (gameCleared && e.code === 'KeyR') await loadLevelByManifestIndex(0);
+        });
 
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
         loadGameData();
     </script>
-
 </body>
-
 </html>

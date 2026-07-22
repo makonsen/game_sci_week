@@ -8,10 +8,6 @@
         "file": "levels/level2.json"
     },
     {
-        "name": "ด่านว่าง",
-        "file": "levels/empty.json"
-    },
-    {
         "name": "ด่านทดลอง",
         "file": "levels/level3.json"
     }

@@ -15,10 +15,13 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            overflow: hidden;
         }
 
         canvas {
             width: 100%;
+            height: 100vh;
+            object-fit: contain;
             background-color: #87CEEB;
             /* สีท้องฟ้า */
             border: 3px solid #fff;
@@ -45,16 +48,22 @@
             return img;
         }
 
-        // 1. ระบบโหลดไฟล์ JSON
+        // 1. ระบบโหลดไฟล์ JSON (รองรับ Temporary Array จาก Level Editor)
         async function loadGameData() {
             try {
-                const [levelRes, objectsRes, charsRes] = await Promise.all([
-                    fetch('data/level.json'),
+                const [objectsRes, charsRes] = await Promise.all([
                     fetch('data/objects.json'),
                     fetch('data/characters.json')
                 ]);
 
-                levelInstances = await levelRes.json();
+                // 🔹 ตรวจสอบอาเรย์ชั่วคราวจาก Level Editor ก่อน
+                if (window.parent && window.parent.tempLevelData && window.parent.tempLevelData.length > 0) {
+                    levelInstances = window.parent.tempLevelData;
+                } else {
+                    const levelRes = await fetch('data/level.json');
+                    levelInstances = await levelRes.json();
+                }
+
                 const objectsData = await objectsRes.json();
                 const charsData = await charsRes.json();
 
@@ -118,7 +127,7 @@
             if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
         });
 
-        // ฟังก์ชันคำนวณแรงชนแบบรองรับวัตถุที่ไม่มีค่า h
+        // ฟังก์ชันคำนวณการชนแบบรองรับวัตถุที่ไม่มีค่า h
         function isColliding(rect1, instance) {
             const objH = instance.h ?? instance.w; // ถ้าไม่มี h ให้ใช้ w แทน
             return rect1.x < instance.x + instance.w &&
@@ -203,11 +212,10 @@
             ctx.save();
             ctx.translate(-cameraX, 0);
 
-            // วาดวัตถุทั้งหมดจาก level.json
+            // วาดวัตถุทั้งหมดจาก level.json หรือ tempLevelData
             for (let instance of levelInstances) {
                 const typeDef = loadedObjectTypes[instance.type];
                 if (typeDef && typeDef.img) {
-                    // ดึงค่าความสูง h หรือใช้ความกว้าง w แทนหากไม่ได้ระบุ h ใน JSON
                     const h = instance.h ?? instance.w;
                     ctx.drawImage(typeDef.img, instance.x, instance.y, instance.w, h);
                 }
@@ -234,6 +242,7 @@
             requestAnimationFrame(gameLoop);
         }
 
+        // เริ่มต้นโหลดข้อมูลเกม
         loadGameData();
     </script>
 

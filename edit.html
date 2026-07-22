@@ -78,51 +78,11 @@
         #zoom-controls button:hover { background: #4ea8de; }
         #zoom-text { font-size: 13px; font-weight: bold; width: 50px; text-align: center; color: #4ea8de; }
 
-        /* -------------------------------------------------- */
-        /* 🔹 Visual Markers & Bounds (ขนาด 800x400) */
-        /* -------------------------------------------------- */
-        .world-bounds {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* กรอบแสดงขนาด Canvas จริงของเกม (800x400) */
-        .camera-frame {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 800px;
-            height: 400px;
-            border: 2px dashed #f39c12;
-            box-shadow: inset 0 0 20px rgba(243, 156, 18, 0.15);
-            pointer-events: none;
-        }
-
-        .boundary-line-left {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background-color: #2ecc71;
-            box-shadow: 2px 0 10px rgba(46, 204, 113, 0.5);
-        }
-
-        /* เส้นขอบล่างสุดของจอเกม (Y: 400) */
-        .boundary-line-bottom {
-            position: absolute;
-            top: 400px;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: #e74c3c;
-            box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
-        }
+        /* Visual Markers & Bounds */
+        .world-bounds { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        .camera-frame { position: absolute; top: 0; left: 0; width: 800px; height: 400px; border: 2px dashed #f39c12; box-shadow: inset 0 0 20px rgba(243, 156, 18, 0.15); pointer-events: none; }
+        .boundary-line-left { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: #2ecc71; box-shadow: 2px 0 10px rgba(46, 204, 113, 0.5); }
+        .boundary-line-bottom { position: absolute; top: 400px; left: 0; width: 100%; height: 4px; background-color: #e74c3c; box-shadow: 0 0 10px rgba(231, 76, 60, 0.8); }
 
         .boundary-badge {
             position: absolute;
@@ -151,8 +111,31 @@
         .game-object.selected { outline: 2px solid #f1c40f !important; }
         .delete-btn { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; background-color: #e74c3c; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.4); z-index: 10; }
         .game-object:hover .delete-btn, .game-object.selected .delete-btn { display: flex; }
-        .resize-handle { position: absolute; bottom: -5px; right: -5px; width: 12px; height: 12px; background-color: #f1c40f; border: 1px solid #111; cursor: nwse-resize; display: none; z-index: 10; }
+
+        /* -------------------------------------------------- */
+        /* 🔹 Resize Handles (รองรับแกน X และ แกน Y ครบถ้วน) */
+        /* -------------------------------------------------- */
+        .resize-handle {
+            position: absolute;
+            background-color: #f1c40f;
+            border: 1px solid #111;
+            display: none;
+            z-index: 10;
+            border-radius: 2px;
+        }
         .game-object:hover .resize-handle, .game-object.selected .resize-handle { display: block; }
+
+        /* แกน X: ขวา */
+        .resize-handle.handle-r { right: -5px; top: calc(50% - 10px); width: 8px; height: 20px; cursor: e-resize; }
+        /* แกน X: ซ้าย */
+        .resize-handle.handle-l { left: -5px; top: calc(50% - 10px); width: 8px; height: 20px; cursor: w-resize; }
+        /* แกน Y: บน */
+        .resize-handle.handle-t { top: -5px; left: calc(50% - 10px); width: 20px; height: 8px; cursor: n-resize; }
+        /* แกน Y: ล่าง */
+        .resize-handle.handle-b { bottom: -5px; left: calc(50% - 10px); width: 20px; height: 8px; cursor: s-resize; }
+        /* มุมขวาล่าง (X & Y) */
+        .resize-handle.handle-br { bottom: -5px; right: -5px; width: 12px; height: 12px; cursor: nwse-resize; }
+
         .pipe-badge { position: absolute; top: 2px; left: 2px; background-color: rgba(0, 0, 0, 0.7); color: #2ecc71; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-family: monospace; pointer-events: none; }
 
         /* Playtest Modal Overlay */
@@ -187,7 +170,7 @@
 
         <div id="workspace">
             <div id="canvas">
-                <!-- 🔹 จุดมาร์กเกอร์และขอบเขตขนาด Canvas 800x400 -->
+                <!-- จุดมาร์กเกอร์และขอบเขตขนาด Canvas 800x400 -->
                 <div class="world-bounds">
                     <div class="camera-frame"></div>
                     <div class="boundary-line-left"></div>
@@ -285,7 +268,7 @@
 
         async function loadDefaultLevel() {
             try {
-                const response = await fetch('');
+                const response = await fetch('data/level.json');
                 if (response.ok) {
                     const levelData = await response.json();
                     loadLevelData(levelData);
@@ -343,30 +326,38 @@
                 updatePipeLines();
             });
 
-            const resizeHandle = document.createElement('div');
-            resizeHandle.classList.add('resize-handle');
+            // 🔹 สร้าง Handles ยืดขยาย (แกน X, แกน Y และ มุม)
+            const handleR = document.createElement('div'); handleR.classList.add('resize-handle', 'handle-r');
+            const handleL = document.createElement('div'); handleL.classList.add('resize-handle', 'handle-l');
+            const handleT = document.createElement('div'); handleT.classList.add('resize-handle', 'handle-t');
+            const handleB = document.createElement('div'); handleB.classList.add('resize-handle', 'handle-b');
+            const handleBR = document.createElement('div'); handleBR.classList.add('resize-handle', 'handle-br');
 
             obj.appendChild(delBtn);
-            obj.appendChild(resizeHandle);
+            obj.appendChild(handleR);
+            obj.appendChild(handleL);
+            obj.appendChild(handleT);
+            obj.appendChild(handleB);
+            obj.appendChild(handleBR);
             canvas.appendChild(obj);
 
-            attachPointerEvents(obj, resizeHandle);
+            attachPointerEvents(obj, { handleR, handleL, handleT, handleB, handleBR });
             updatePipeLines();
         }
 
-        function attachPointerEvents(obj, resizeHandle) {
-            let isDragging = false;
-            let isResizing = false;
+        function attachPointerEvents(obj, handles) {
+            let mode = 'none';
             let startX, startY, startLeft, startTop, startW, startH;
 
             obj.addEventListener('pointerdown', (e) => {
                 if (e.target.classList.contains('delete-btn')) return;
 
-                if (e.target === resizeHandle) {
-                    isResizing = true;
-                } else {
-                    isDragging = true;
-                }
+                if (e.target === handles.handleR) mode = 'resize-r';
+                else if (e.target === handles.handleL) mode = 'resize-l';
+                else if (e.target === handles.handleT) mode = 'resize-t';
+                else if (e.target === handles.handleB) mode = 'resize-b';
+                else if (e.target === handles.handleBR) mode = 'resize-br';
+                else mode = 'drag';
 
                 e.stopPropagation();
                 startX = e.clientX;
@@ -387,23 +378,49 @@
                 const dx = (e.clientX - startX) / scale;
                 const dy = (e.clientY - startY) / scale;
 
-                if (isDragging) {
+                if (mode === 'drag') {
                     let newX = Math.round((startLeft + dx) / gridSize) * gridSize;
                     let newY = Math.round((startTop + dy) / gridSize) * gridSize;
                     obj.style.left = newX + 'px';
                     obj.style.top = newY + 'px';
                     updatePipeLines();
-                } else if (isResizing) {
+                } 
+                // 🔹 ยืด/ย่อ แกน X
+                else if (mode === 'resize-r') {
+                    let newW = Math.max(gridSize, Math.round((startW + dx) / gridSize) * gridSize);
+                    obj.style.width = newW + 'px';
+                    updatePipeLines();
+                } else if (mode === 'resize-l') {
+                    let newW = Math.max(gridSize, Math.round((startW - dx) / gridSize) * gridSize);
+                    let newX = startLeft + (startW - newW);
+                    obj.style.left = newX + 'px';
+                    obj.style.width = newW + 'px';
+                    updatePipeLines();
+                } 
+                // 🔹 ยืด/ย่อ แกน Y
+                else if (mode === 'resize-b') {
+                    let newH = Math.max(gridSize, Math.round((startH + dy) / gridSize) * gridSize);
+                    obj.style.height = newH + 'px';
+                    updatePipeLines();
+                } else if (mode === 'resize-t') {
+                    let newH = Math.max(gridSize, Math.round((startH - dy) / gridSize) * gridSize);
+                    let newY = startTop + (startH - newH);
+                    obj.style.top = newY + 'px';
+                    obj.style.height = newH + 'px';
+                    updatePipeLines();
+                } 
+                // 🔹 ยืด/ย่อ มุมขวาล่าง (X & Y พร้อมกัน)
+                else if (mode === 'resize-br') {
                     let newW = Math.max(gridSize, Math.round((startW + dx) / gridSize) * gridSize);
                     let newH = Math.max(gridSize, Math.round((startH + dy) / gridSize) * gridSize);
                     obj.style.width = newW + 'px';
                     obj.style.height = newH + 'px';
+                    updatePipeLines();
                 }
             }
 
             function onPointerUp() {
-                isDragging = false;
-                isResizing = false;
+                mode = 'none';
                 window.removeEventListener('pointermove', onPointerMove);
                 window.removeEventListener('pointerup', onPointerUp);
             }

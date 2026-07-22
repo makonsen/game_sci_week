@@ -1,28 +1,10 @@
 [
     {
         "type": "ground",
-        "x": 20,
-        "y": 360,
+        "x": 0,
+        "y": 320,
         "w": 1120,
         "h": 80
-    },
-    {
-        "type": "pipe",
-        "x": 280,
-        "y": 280,
-        "w": 60,
-        "h": 80,
-        "pipeId": "pipe_1",
-        "targetPipeId": "pipe_2"
-    },
-    {
-        "type": "pipe",
-        "x": 440,
-        "y": 280,
-        "w": 60,
-        "h": 80,
-        "pipeId": "pipe_2",
-        "targetPipeId": "pipe_1"
     },
     {
         "type": "cloud",
@@ -32,18 +14,17 @@
         "h": 120
     },
     {
-        "type": "brick",
-        "x": 180,
-        "y": 280,
-        "w": 60,
-        "h": 40
+        "type": "player_start",
+        "x": 40,
+        "y": 260,
+        "w": 40,
+        "h": 60
     },
     {
-        "type": "npc",
-        "x": 680,
-        "y": 320,
+        "type": "flag",
+        "x": 240,
+        "y": 260,
         "w": 40,
-        "h": 50,
-        "message": "สวัสดี!"
+        "h": 60
     }
 ]

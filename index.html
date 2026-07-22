@@ -136,20 +136,45 @@
                 rect1.y + rect1.height > instance.y;
         }
 
+        // 🔹 เพิ่มฟังก์ชันตรวจสอบว่าสามารถยืนขึ้นได้หรือไม่ (เช็คบล็อกด้านบน)
+        function canStandUp() {
+            const heightDiff = player.normalHeight - player.crouchHeight;
+            // จำลอง Hitbox ตอนยืนขึ้น (ขยายส่วนหัวขึ้นไปด้านบน)
+            const standingBox = {
+                x: player.x,
+                y: player.y - heightDiff,
+                width: player.width,
+                height: player.normalHeight
+            };
+
+            for (let instance of levelInstances) {
+                const typeDef = loadedObjectTypes[instance.type];
+                if (typeDef && typeDef.solid && isColliding(standingBox, instance)) {
+                    return false; // ติดบล็อกด้านบน ยังยืนไม่ได้!
+                }
+            }
+            return true; // ปลอดภัย ยืนได้
+        }
+
         // 3. ระบบคำนวณการเคลื่อนที่และการชน
         function update() {
-            // ย่อตัว
+            const heightDiff = player.normalHeight - player.crouchHeight;
+
+            // ระบบย่อตัว / ยืนขึ้นอัตโนมัติ
             if (keys.down && player.isGrounded) {
                 if (!player.isCrouching) {
                     player.isCrouching = true;
-                    player.y += (player.normalHeight - player.crouchHeight);
+                    player.y += heightDiff;
                     player.height = player.crouchHeight;
                 }
             } else {
+                // ถ้าปล่อยปุ่มย่อแล้ว แต่ยังย่อตัวอยู่ ให้เช็คว่าพื้นที่ด้านบนว่างพอจะยืนได้หรือยัง
                 if (player.isCrouching) {
-                    player.isCrouching = false;
-                    player.y -= (player.normalHeight - player.crouchHeight);
-                    player.height = player.normalHeight;
+                    if (canStandUp()) {
+                        player.isCrouching = false;
+                        player.y -= heightDiff;
+                        player.height = player.normalHeight;
+                    }
                 }
             }
 

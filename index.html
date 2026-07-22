@@ -1,1058 +1,239 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mario Scene Map - SVG</title>
+    <title>2D Side-Scroller Game</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
-            background-color: #87CEEB;
+            background-color: #1a1a1a;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        svg {
-            width: 100vw;
             height: 100vh;
-            display: block;
-            border: none;
+        }
+
+        canvas {
+            width: 90%;
             background-color: #87CEEB;
-        }
-        h1 {
-            position: absolute;
-            top: 10px;
-            left: 20px;
-            color: #333;
-        }
-        #settingsPanel {
-            position: absolute;
-            top: 60px;
-            right: 20px;
-            background: #fff;
-            border: 1px solid #ccc;
-            padding: 12px;
-            display: none;
-            z-index: 10000;
-            width: 240px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.2);
-            font-size: 14px;
-            color: #333;
-        }
-        #settingsPanel label {
-            display: block;
-            margin-bottom: 8px;
-        }
-        #settingsPanel button {
-            width: 100%;
-            padding: 8px;
-            margin-top: 8px;
-            border: none;
-            background: #228B22;
-            color: #fff;
-            cursor: pointer;
-        }
-        #settings-btn {
-            margin-left: 10px;
-            padding: 4px 8px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        svg .selected-object {
-            filter: drop-shadow(0 0 8px #00FF00);
-        }
-        #editorContextMenu {
-            position: fixed;
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 4px 0;
-            z-index: 10001;
-            font-size: 13px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.2);
-            display: none;
-        }
-        #editorContextMenu button {
-            display: block;
-            width: 100%;
-            padding: 6px 12px;
-            border: none;
-            background: none;
-            text-align: left;
-            cursor: pointer;
-            color: #333;
-        }
-        #editorContextMenu button:hover {
-            background: #f0f0f0;
-        }
-        svg .draggable-object {
-            cursor: move;
-        }
-        svg .draggable-object.dragging {
-            filter: drop-shadow(0 0 10px #FFD700);
-            opacity: 0.9;
-        }
-        #startScreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10002;
-        }
-        #startScreen h2 {
-            margin-bottom: 20px;
-        }
-        #startScreen select {
-            width: 250px;
-            padding: 10px;
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
-        #startScreen button {
-            width: 250px;
-            padding: 12px;
-            font-size: 18px;
-            cursor: pointer;
-            background: #228B22;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            /* สีท้องฟ้า */
+            border: 3px solid #fff;
         }
     </style>
 </head>
+
 <body>
-    <div id="startScreen">
-        <h2>เลือกด่าน</h2>
-        <select id="start-level-select"></select>
-        <button id="start-game-btn">เริ่มเกม</button>
-    </div>
-    <h1>Mario Scene Map</h1>
-    <div id="hud" style="position: absolute; right: 20px; top: 10px; color:#333; font-weight:bold">Coins: <span id="coin-count">0</span></div>
-    <div id="settingsPanel">
-        <div style="font-weight:bold; margin-bottom:8px;">การตั้งค่าเกม</div>
-        <label>
-            ระดับความยาก:
-            <select id="difficulty-select" style="width:100%; margin-top:4px;">
-                <option value="easy">ง่าย</option>
-                <option value="normal" selected>ปกติ</option>
-                <option value="hard">ยาก</option>
-            </select>
-        </label>
-        <label>
-            ความเร็วเดิน:
-            <input id="speed-range" type="range" min="4" max="10" step="1" value="6" style="width:100%;"/>
-            <div id="speed-value" style="text-align:right;">6</div>
-        </label>
-        <label>
-            แรงกระโดด:
-            <input id="jump-range" type="range" min="18" max="26" step="1" value="21" style="width:100%;"/>
-            <div id="jump-value" style="text-align:right;">21</div>
-        </label>
-        <button id="apply-settings">บันทึก</button>
-    </div>
-    <div id="levelEditorPanel" style="position:absolute;left:20px;top:60px;background:#fff;border:1px solid #ccc;padding:12px;z-index:10000;width:260px;box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:14px;color:#333;display:none;">
-        <div style="font-weight:bold;margin-bottom:8px;">Level Editor</div>
-        <label>ประเภทวัตถุ:
-            <select id="place-type" style="width:100%;margin-top:4px;">
-                <option value="brick">Brick</option>
-                <option value="qblock">Question Block</option>
-                <option value="npc">NPC</option>
-                <option value="pipe">Pipe</option>
-                <option value="obstacle">Obstacle</option>
-            </select>
-        </label>
-        <label>ตำแหน่ง X:
-            <input id="place-x" type="number" value="100" style="width:100%;"/>
-        </label>
-        <label>ตำแหน่ง Y:
-            <input id="place-y" type="number" value="200" style="width:100%;"/>
-        </label>
-        <button id="place-btn">วางวัตถุ</button>
-        <button id="toggle-place-mode" style="margin-top:8px;">โหมดคลิกเพื่อวาง: ปิด</button>
-        <hr>
-        <div style="font-weight:bold;margin-bottom:6px;">โหลดด่านสำเร็จรูป</div>
-        <select id="premade-level-select" style="width:100%;margin-bottom:6px;"></select>
-        <button id="load-premade-level" style="margin-top:6px;">โหลดด่านที่เลือก</button>
-        <hr>
-        <div style="font-weight:bold;margin-bottom:6px;">จัดการด่าน</div>
-        <input id="level-name" placeholder="ชื่อด่าน" style="width:100%;margin-bottom:6px;" />
-        <button id="save-level">บันทึกด่าน</button>
-        <button id="load-level" style="margin-top:6px;">โหลดด่าน</button>
-        <button id="export-level" style="margin-top:6px;">ส่งออก JSON</button>
-        <button id="import-level-btn" style="margin-top:6px;">นำเข้าด่าน (JSON)</button>
-        <input type="file" id="level-file-input" accept=".json" style="display:none;" />
-        <button id="clear-level" style="margin-top:6px;background:#c33;">ล้างด่าน</button>
-    </div>
-    <svg width="100%" height="100%" viewBox="0 0 5000 400">
-        <!-- Sky background -->
-        <rect width="5000" height="250" fill="#87CEEB"/>
-        
-        <!-- Ground -->
-        <rect y="250" width="5000" height="150" fill="#228B22"/>
-        
-        <!-- Clouds -->
-        <circle cx="100" cy="50" r="30" fill="white"/>
-        <circle cx="130" cy="50" r="30" fill="white"/>
-        <circle cx="160" cy="50" r="30" fill="white"/>
-        
-        <circle cx="500" cy="80" r="25" fill="white"/>
-        <circle cx="530" cy="80" r="25" fill="white"/>
-        <circle cx="560" cy="80" r="25" fill="white"/>
-        
-        <circle id="sun" cx="700" cy="50" r="40" fill="#FFD700"/>
 
-        <!-- End flag at far right -->
-        <g id="endFlag">
-            <rect x="4950" y="220" width="5" height="120" fill="#8B4513"/>
-            <polygon points="4955,240 4955,280 4985,260" fill="#FF0000"/>
-        </g>
-    </svg>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
     <script>
-        // Add Mario character via JS
-        document.querySelector('svg').insertAdjacentHTML('beforeend', `
-            <g id="mario">
-                <!-- Head -->
-                <circle cx="50" cy="280" r="15" fill="#FF9800"/>
-                <!-- Body -->
-                <rect x="38" y="295" width="24" height="20" fill="#FF0000"/>
-                <!-- Arm left -->
-                <rect x="25" y="300" width="13" height="8" fill="#FFB6C1"/>
-                <!-- Arm right -->
-                <rect x="62" y="300" width="13" height="8" fill="#FFB6C1"/>
-                <!-- Pants -->
-                <rect x="40" y="315" width="20" height="15" fill="#0033CC"/>
-                <!-- Shoes -->
-                <rect x="35" y="330" width="10" height="8" fill="#333"/>
-                <rect x="55" y="330" width="10" height="8" fill="#333"/>
-                <!-- Face -->
-                <circle cx="45" cy="278" r="2" fill="#000"/>
-                <circle cx="55" cy="278" r="2" fill="#000"/>
-            </g>
-        `);
-        (function(){
-            const mario = document.getElementById('mario');
-            const svg = document.querySelector('svg');
-            const LEVEL_WIDTH = 5000;
-            let x = 50; // initial cx of head
-            let y = 0;
-            let vx = 0; // horizontal velocity
-            const accel = 0.8; // acceleration when key held
-            const decel = 0.7; // deceleration when key released
-            let gameStarted = false;
-            let walking = false; // Mario walking state
-            const keys = { left: false, right: false, editorLeft: false, editorRight: false, editorUp: false, editorDown: false }; // Added editor keys for vertical movement
-            const settings = {
-                speed: 6,
-                jumpPower: 21,
-                gravity: 1.4
-            };
-            let maxSpeed, jumpStrength, gravity;
-            function applySettings() {
-                maxSpeed = settings.speed;
-                jumpStrength = -settings.jumpPower;
-                gravity = settings.gravity;
-            }
-            const LEVEL_VIEW_HEIGHT = 800; // Define a larger vertical extent for editor camera to pan
-            let editorCameraZoom = 1; // Initial zoom level for editor camera (1 = no zoom)
-            const minZoom = 0.2; // Minimum zoom level (zoomed out)
-            const maxZoom = 5.0; // Maximum zoom level (zoomed in)
-            let freeCameraMode = false; // New variable for free camera mode
-            let editorCameraX = 0; // New variable for editor camera's X position
-            let editorCameraY = 0; // New variable for editor camera's Y position
-            const editorCameraSpeed = 10; // Speed for moving the editor camera in pixels per frame
-            applySettings();
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
 
-            const startLives = 3;
-            let coins = 0, lives = startLives, hurtCooldown = 0;
-            const coinCountEl = document.getElementById('coin-count');
-            const hud = document.getElementById('hud');
-            hud.insertAdjacentHTML('beforeend', ' | ชีวิต: <span id="life-count">3</span><button id="settings-btn" style="margin-left:10px;padding:4px 8px;font-size:14px;cursor:pointer;">ตั้งค่า</button><button id="editor-btn" style="margin-left:10px;padding:4px 8px;font-size:14px;cursor:pointer;">แก้ไขด่าน</button>');
-            const lifeCountEl = document.getElementById('life-count');
-            
-            const editorBtn = document.getElementById('editor-btn');
-            const levelEditorPanel = document.getElementById('levelEditorPanel');
-            editorBtn.addEventListener('click', () => {
-                freeCameraMode = levelEditorPanel.style.display !== 'block'; // Toggle free camera mode
-                if (freeCameraMode) {
-                    // When entering free camera mode, initialize editorCameraX to Mario's current position
-                    const cameraWidth = 800;
-                    const cameraHeight = 400;
-                    editorCameraX = clamp(x + 50 - (cameraWidth / 2), 0, LEVEL_WIDTH - cameraWidth);
-                    editorCameraY = 0; // Initialize Y to top of the viewable area
+        let levelInstances = [];
+        const loadedObjectTypes = {};
+        const loadedCharacters = {};
+
+        function svgToImage(svgString) {
+            const img = new Image();
+            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            img.src = URL.createObjectURL(blob);
+            return img;
+        }
+
+        // 1. ระบบโหลดไฟล์ JSON
+        async function loadGameData() {
+            try {
+                const [levelRes, objectsRes, charsRes] = await Promise.all([
+                    fetch('level.json'),
+                    fetch('objects.json'),
+                    fetch('characters.json')
+                ]);
+
+                levelInstances = await levelRes.json();
+                const objectsData = await objectsRes.json();
+                const charsData = await charsRes.json();
+
+                for (const [typeKey, objDef] of Object.entries(objectsData)) {
+                    loadedObjectTypes[typeKey] = {
+                        name: objDef.name,
+                        solid: objDef.solid ?? true,
+                        img: svgToImage(objDef.svg)
+                    };
                 }
-                // Update camera immediately after toggling mode
-                updateMarioPosition();
-                levelEditorPanel.style.display = levelEditorPanel.style.display === 'block' ? 'none' : 'block';
-            });
 
-            // Level editor functionality
-            const placeTypeEl = document.getElementById('place-type');
-            const placeXEl = document.getElementById('place-x');
-            const placeYEl = document.getElementById('place-y');
-            const placeBtn = document.getElementById('place-btn');
-            const togglePlaceModeBtn = document.getElementById('toggle-place-mode');
-            const saveLevelBtn = document.getElementById('save-level');
-            const loadLevelBtn = document.getElementById('load-level');
-            const exportLevelBtn = document.getElementById('export-level');
-            const clearLevelBtn = document.getElementById('clear-level');
-            const importLevelBtn = document.getElementById('import-level-btn');
-            const levelFileInput = document.getElementById('level-file-input');
-            const levelNameEl = document.getElementById('level-name');
-            const premadeLevelSelect = document.getElementById('premade-level-select');
-            const loadPremadeLevelBtn = document.getElementById('load-premade-level');
-            const startScreen = document.getElementById('startScreen');
-            const startLevelSelect = document.getElementById('start-level-select');
-            const startGameBtn = document.getElementById('start-game-btn');
-
-            (async function populateLevels() {
-                try {
-                    const response = await fetch('levels.json');
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const levels = await response.json();
-                    
-                    premadeLevelSelect.innerHTML = ''; // Clear existing options
-                    startLevelSelect.innerHTML = '';
-                    levels.forEach(level => {
-                        const option = document.createElement('option');
-                        option.value = level.file;
-                        option.textContent = level.name;
-                        premadeLevelSelect.appendChild(option.cloneNode(true));
-                        startLevelSelect.appendChild(option);
-                    });
-                } catch (e) {
-                    console.error("Could not load level list:", e);
-                    premadeLevelSelect.innerHTML = `<option value="">ไม่สามารถโหลดด่านได้</option>`;
-                    startLevelSelect.innerHTML = `<option value="">ไม่สามารถโหลดด่านได้</option>`;
-                    premadeLevelSelect.disabled = true;
-                    loadPremadeLevelBtn.disabled = true;
-                    startLevelSelect.disabled = true;
-                    startGameBtn.disabled = true;
-                }
-            })();
-
-            startGameBtn.addEventListener('click', async () => {
-                const levelFile = startLevelSelect.value;
-                if (!levelFile) {
-                    alert('กรุณาเลือกด่าน');
-                    return;
-                }
-                try {
-                    const response = await fetch(levelFile);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const levelData = await response.json();
-                    loadLevelFromData(levelData);
-                    startScreen.style.display = 'none';
-                    gameStarted = true;
-                } catch (e) {
-                    console.error(`Failed to load level ${levelFile}:`, e);
-                    alert(`ไม่สามารถโหลดไฟล์ด่าน: ${levelFile}`);
-                }
-            });
-            let clickPlaceMode = false;
-            function createObject(type, x, y, w, h, message){
-                let newElement;
-                if(type === 'brick'){
-                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
-                    r.setAttribute('x', x);
-                    r.setAttribute('y', y);
-                    r.setAttribute('width', w || 40);
-                    r.setAttribute('height', h || 40);
-                    r.setAttribute('fill','#8B4513');
-                    r.setAttribute('stroke','#654321');
-                    r.setAttribute('stroke-width','2');
-                    newElement = r;
-                } else if(type === 'qblock'){
-                    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-                    g.setAttribute('class','q-block');
-                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
-                    r.setAttribute('x', x);
-                    r.setAttribute('y', y);
-                    r.setAttribute('width', 40);
-                    r.setAttribute('height', 40);
-                    r.setAttribute('fill','#FFD700');
-                    r.setAttribute('stroke','#FFA500');
-                    r.setAttribute('stroke-width','2');
-                    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-                    t.setAttribute('x', x+20);
-                    t.setAttribute('y', y+30);
-                    t.setAttribute('font-size','24');
-                    t.setAttribute('font-weight','bold');
-                    t.setAttribute('text-anchor','middle');
-                    t.setAttribute('fill','#FF6347');
-                    t.textContent = '?';
-                    g.appendChild(r);
-                    g.appendChild(t);
-                    newElement = g;
-                } else if(type === 'pipe'){
-                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
-                    r.setAttribute('x', x);
-                    r.setAttribute('y', y);
-                    r.setAttribute('width', w || 50);
-                    r.setAttribute('height', h || 50);
-                    r.setAttribute('fill','#228B22');
-                    r.setAttribute('stroke','#0B6623');
-                    r.setAttribute('stroke-width','2');
-                    newElement = r;
-                } else if(type === 'obstacle'){
-                    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
-                    r.setAttribute('x', x);
-                    r.setAttribute('y', y);
-                    r.setAttribute('width', w || 60);
-                    r.setAttribute('height', h || 20);
-                    r.setAttribute('fill','#654321');
-                    newElement = r;
-                }
-                else if(type === 'npc'){
-                    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-                    g.setAttribute('class','npc-object');
-                    const body = document.createElementNS('http://www.w3.org/2000/svg','circle');
-                    body.setAttribute('cx', x + 15); // Center x, assuming 30px width
-                    body.setAttribute('cy', y - 15); // Center y, assuming y is bottom of 40px height
-                    body.setAttribute('r', 15);
-                    body.setAttribute('fill','#9932CC');
-                    const head = document.createElementNS('http://www.w3.org/2000/svg','circle');
-                    head.setAttribute('cx', x + 15);
-                    head.setAttribute('cy', y - 35); // Head above body
-                    head.setAttribute('r', 10);
-                    head.setAttribute('fill','#DA70D6');
-                    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
-                    text.setAttribute('x', x + 15);
-                    text.setAttribute('y', y - 5); // Text below body
-                    text.setAttribute('font-size','10');
-                    text.setAttribute('text-anchor','middle');
-                    text.setAttribute('fill','#fff');
-                    text.textContent = message || 'Hi!';
-                    g.appendChild(body);
-                    g.appendChild(head);
-                    g.appendChild(text);
-                    newElement = g;
-
-                    npcs.push({
-                        gx: x, // Left edge for collision
-                        gy: y - 40, // Top edge for collision (assuming 40px total height)
-                        gw: 30, // Width for collision
-                        gh: 40, // Height for collision
-                        message: message || 'Hi!',
-                        element: g // Store reference to the SVG group
-                    });
-                }
-                
-                if (newElement) {
-                    newElement.setAttribute('data-object-type', type);
-                    newElement.classList.add('editor-placed');
-                    newElement.setAttribute('data-draggable', 'true');
-                    svg.appendChild(newElement);
-
-                    if (type !== 'npc') {
-                        let rectForCollision = newElement.tagName === 'g' ? newElement.querySelector('rect') : newElement;
-                        if (rectForCollision) {
-                            const gx = parseFloat(rectForCollision.getAttribute('x') || 0);
-                            const gy = parseFloat(rectForCollision.getAttribute('y') || 0);
-                            const gw = parseFloat(rectForCollision.getAttribute('width') || 0);
-                            const gh = parseFloat(rectForCollision.getAttribute('height') || 0);
-                            const isQ = newElement.classList.contains('q-block');
-                            blocks.push({
-                                gx, gy, gw, gh,
-                                used: false,
-                                isQBlock: isQ,
-                                group: isQ ? newElement : null,
-                                element: newElement
-                            });
-                        }
-                    }
-                }
-            }
-
-            // allow deleting placed objects by double-clicking them
-            svg.addEventListener('dblclick', (ev) => {
-                let el = ev.target;
-                while(el && el !== svg && !el.classList?.contains('editor-placed')) el = el.parentNode;
-                if(!el || el === svg) return;
-
-                const blockIndex = blocks.findIndex(b => b.element === el);
-                if (blockIndex > -1) {
-                    blocks.splice(blockIndex, 1);
-                }
-                const npcIndex = npcs.findIndex(n => n.element === el);
-                if (npcIndex > -1) {
-                    npcs.splice(npcIndex, 1);
-                }
-                el.remove();
-            });
-
-            placeBtn.addEventListener('click', ()=>{
-                const type = placeTypeEl.value;
-                const x = parseFloat(placeXEl.value) || 0;
-                const y = parseFloat(placeYEl.value) || 0;
-                createObject(type,x,y);
-            });
-
-            togglePlaceModeBtn.addEventListener('click', ()=>{
-                clickPlaceMode = !clickPlaceMode;
-                togglePlaceModeBtn.textContent = `โหมดคลิกเพื่อวาง: ${clickPlaceMode? 'เปิด':'ปิด'}`;
-            });
-
-            svg.addEventListener('click', (ev)=>{
-                if(!clickPlaceMode) return;
-                const pt = svg.createSVGPoint();
-                pt.x = ev.clientX; pt.y = ev.clientY;
-                const ctm = svg.getScreenCTM().inverse();
-                const loc = pt.matrixTransform(ctm);
-                const type = placeTypeEl.value;
-                createObject(type, Math.round(loc.x), Math.round(loc.y));
-            });
-
-            function collectLevelData(){
-                const objs = [];
-                // Select all elements that were dynamically placed and have a type
-                svg.querySelectorAll('[data-object-type]').forEach(el => {
-                    const type = el.getAttribute('data-object-type');
-                    const obj = { type };
-
-                    if (type === 'npc') {
-                        const body = el.querySelector('circle:nth-child(1)');
-                        const textEl = el.querySelector('text');
-                        if (body) {
-                            obj.x = parseFloat(body.getAttribute('cx')) - 15;
-                            obj.y = parseFloat(body.getAttribute('cy')) + 15;
-                            obj.message = textEl ? textEl.textContent : 'Hi!';
-                        }
-                    } else { // For all rect-based objects (brick, pipe, obstacle, qblock)
-                        const rect = el.tagName.toLowerCase() === 'rect' ? el : el.querySelector('rect');
-                        if (rect) {
-                            obj.x = parseFloat(rect.getAttribute('x'));
-                            obj.y = parseFloat(rect.getAttribute('y'));
-                            obj.w = parseFloat(rect.getAttribute('width'));
-                            obj.h = parseFloat(rect.getAttribute('height'));
-                        }
-                    }
-                    
-                    if (obj.x !== undefined && obj.y !== undefined) {
-                        objs.push(obj);
-                    }
-                });
-                return objs;
-            }
-
-            function clearAllPlacedObjects() {
-                // Remove all elements marked as 'editor-placed'
-                svg.querySelectorAll('.editor-placed').forEach(el => {
-                    el.remove();
+                charsData.characters.forEach(char => {
+                    loadedCharacters[char.id] = {
+                        name: char.name,
+                        imgNormal: svgToImage(char.svgNormal),
+                        imgCrouch: svgToImage(char.svgCrouch)
+                    };
                 });
 
-                // Remove dynamically created coins (small yellow circles, not the sun)
-                // The sun has id="sun" and r="40". Coins have r="8".
-                svg.querySelectorAll('circle[fill="#FFD700"]').forEach(circle => {
-                    if (circle.id !== 'sun' && parseFloat(circle.getAttribute('r')) < 10) {
-                        circle.remove();
-                    }
-                });
-
-                // Update the 'blocks' array to remove editor-placed blocks
-                // Ensure 'element' property is stored in blocks array for this to work
-                blocks = blocks.filter(b => {
-                    // Keep blocks that don't have an associated DOM element (shouldn't happen after fix)
-                    // or whose associated DOM element does not have the 'editor-placed' class.
-                    // This effectively keeps initial blocks and removes user-placed ones.
-                    return !b.element || !b.element.classList.contains('editor-placed');
-                });
-
-                // Update the 'npcs' array to remove editor-placed npcs
-                npcs = npcs.filter(n => n.element && !n.element.classList.contains('editor-placed'));
+                gameLoop();
+            } catch (error) {
+                console.error("เกิดข้อผิดพลาดในการโหลดไฟล์ JSON:", error);
             }
+        }
 
-            function loadLevelFromData(data) {
-                clearAllPlacedObjects();
-                // Re-create objects from loaded data
-                data.forEach(o=> createObject(o.type, o.x, o.y, o.w, o.h, o.message));
-            }
+        // 2. ตัวแปรเกม
+        const worldWidth = 5000;
+        const gravity = 0.6;
+        let cameraX = 0;
 
-            saveLevelBtn.addEventListener('click', ()=>{
-                const name = (levelNameEl.value || 'level1').trim();
-                const data = collectLevelData();
-                localStorage.setItem('level_'+name, JSON.stringify(data));
-                alert('บันทึกด่านแล้ว: '+name);
-            });
-            
-            loadLevelBtn.addEventListener('click', ()=>{
-                const name = (levelNameEl.value || 'level1').trim();
-                const raw = localStorage.getItem('level_'+name);
-                if(!raw){ alert('ไม่พบด่าน: '+name); return; }
-                try {
-                    const data = JSON.parse(raw);
-                    loadLevelFromData(data);
-                    alert('โหลดด่าน: '+name);
-                } catch(e) {
-                    alert('ข้อมูลด่านเสียหาย: '+name);
-                    console.error("Error parsing or loading level data:", e);
+        const keys = { left: false, right: false, up: false, down: false };
+
+        const player = {
+            x: 50,
+            y: 100,
+            normalHeight: 50,
+            crouchHeight: 25,
+            width: 40,
+            height: 50,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            crouchSpeed: 2.5,
+            jumpForce: -12,
+            isGrounded: false,
+            isCrouching: false,
+            selectedCharacterId: "hero_red"
+        };
+
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
+            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
+            if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") keys.up = true;
+            if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = true;
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
+            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
+            if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") keys.up = false;
+            if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
+        });
+
+        // ฟังก์ชันคำนวณแรงชนแบบรองรับวัตถุที่ไม่มีค่า h
+        function isColliding(rect1, instance) {
+            const objH = instance.h ?? instance.w; // ถ้าไม่มี h ให้ใช้ w แทน
+            return rect1.x < instance.x + instance.w &&
+                rect1.x + rect1.width > instance.x &&
+                rect1.y < instance.y + objH &&
+                rect1.y + rect1.height > instance.y;
+        }
+
+        // 3. ระบบคำนวณการเคลื่อนที่และการชน
+        function update() {
+            // ย่อตัว
+            if (keys.down && player.isGrounded) {
+                if (!player.isCrouching) {
+                    player.isCrouching = true;
+                    player.y += (player.normalHeight - player.crouchHeight);
+                    player.height = player.crouchHeight;
                 }
-            });
-
-            exportLevelBtn.addEventListener('click', ()=>{
-                const data = collectLevelData();
-                const blob = new Blob([JSON.stringify(data, null, 2)],{type:'application/json'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = (levelNameEl.value||'level')+'.json';
-                document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-            });
-
-            loadPremadeLevelBtn.addEventListener('click', async () => {
-                const levelFile = premadeLevelSelect.value;
-                if (!levelFile) {
-                    alert('กรุณาเลือกด่าน');
-                    return;
-                }
-                try {
-                    const response = await fetch(levelFile);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const levelData = await response.json();
-                    loadLevelFromData(levelData);
-                    alert(`โหลดด่าน '${premadeLevelSelect.options[premadeLevelSelect.selectedIndex].text}' สำเร็จ`);
-                } catch (e) {
-                    console.error(`Failed to load level ${levelFile}:`, e);
-                    alert(`ไม่สามารถโหลดไฟล์ด่าน: ${levelFile}`);
-                }
-            });
-
-            clearLevelBtn.addEventListener('click', ()=>{
-                if(!confirm('ล้างวัตถุที่วางทั้งหมด?')) return;
-                clearAllPlacedObjects();
-            });
-
-            const blockRects = document.querySelectorAll('g.q-block rect, rect[fill="#8B4513"], rect[fill="#654321"]');
-            let blocks = Array.from(blockRects).map(r => {
-                const isQBlock = r.parentNode.classList?.contains('q-block');
-                if (isQBlock) {
-                    // Initial Q-blocks are not editor-placed, so their parent 'g' will not have the class.
-                    // The 'element' property will correctly point to the 'g' element.
-                    const newY = parseFloat(r.getAttribute('y')) + 20;
-                    r.setAttribute('y', newY);
-                    r.parentNode.querySelector('text')?.setAttribute('y', parseFloat(r.parentNode.querySelector('text').getAttribute('y')) + 20);
-                }
-                if (!isQBlock && parseFloat(r.getAttribute('height')) === 40) {
-                    r.setAttribute('height', '30');
-                }
-                return {
-                    gx: parseFloat(r.getAttribute('x')),
-                    gy: parseFloat(r.getAttribute('y')),
-                    gw: parseFloat(r.getAttribute('width')),
-                    gh: parseFloat(r.getAttribute('height')),
-                    used: false,
-                    isQBlock,
-                    group: isQBlock ? r.parentNode : null
-                };
-            });
-            
-            // Initialize NPCs array from existing SVG elements
-            const initialNpcElements = document.querySelectorAll('g.npc-object');
-            let npcs = Array.from(initialNpcElements).map(g => {
-                const body = g.querySelector('circle:nth-child(1)');
-                const textEl = g.querySelector('text');
-                const cx = parseFloat(body.getAttribute('cx'));
-                const cy = parseFloat(body.getAttribute('cy'));
-                const r = parseFloat(body.getAttribute('r'));
-                const message = textEl ? textEl.textContent : 'Hi!';
-
-                return {
-                    gx: cx - r, // Left edge for collision
-                    gy: cy - r, // Top edge for collision
-                    gw: r * 2,  // Width for collision
-                    gh: r * 2 + 20, // Height for collision (body + head + some text space)
-                    message: message,
-                    element: g
-                };
-            });
-
-            const enemies = [
-                { left: 680, right: 720, top: 295, bottom: 328 },
-                { left: 1080, right: 1120, top: 295, bottom: 328 }
-            ];
-            const hurtCooldownMax = 30;
-            // jumping physics
-            let vy = 0;
-            const fallMultiplier = 1.4; // Multiplier for faster falling
-            const groundLevelY = 250; // SVG Y-coordinate of the ground (top edge of the ground rect)
-            let jumpCount = 0;
-            let prevHeadY = 280 + y; // Initial absolute head Y (280 + initial translateY)
-            let prevFeetY = 338 + y; // Initial absolute feet Y (338 + initial translateY)
-            let onSurface = true;
-            let won = false;
-            const endFlagX = 4950;
-
-            function resetGameState() {
-                x = 50;
-                y = 0;
-                vx = 0;
-                vy = 0;
-                onSurface = true;
-                coins = 0;
-                lives = startLives;
-                coinCountEl.textContent = coins;
-                lifeCountEl.textContent = lives;
-                hurtCooldown = 0;
-                for (const b of blocks) b.used = false;
-            }
-
-            let currentMessageTimeout; // For NPC messages
-            function displayMessage(message) {
-                const existingMessage = document.getElementById('npcMessage');
-                if (existingMessage) existingMessage.remove();
-
-                const msgDiv = document.createElement('div');
-                msgDiv.id = 'npcMessage';
-                msgDiv.style.position = 'absolute';
-                msgDiv.style.bottom = '50px'; // Above Mario
-                msgDiv.style.left = '50%';
-                msgDiv.style.transform = 'translateX(-50%)';
-                msgDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
-                msgDiv.style.color = '#fff';
-                msgDiv.style.padding = '8px 12px';
-                msgDiv.style.borderRadius = '5px';
-                msgDiv.style.zIndex = '10000';
-                msgDiv.style.opacity = '1';
-                msgDiv.style.transition = 'opacity 0.5s ease-out';
-                msgDiv.textContent = message;
-                document.body.appendChild(msgDiv);
-
-                if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
-                currentMessageTimeout = setTimeout(() => {
-                    msgDiv.style.opacity = '0';
-                    msgDiv.addEventListener('transitionend', () => msgDiv.remove());
-                }, 2000); // Message disappears after 2 seconds
-            }
-
-            function loseLife() {
-                if (hurtCooldown > 0 || lives <= 0) return;
-                lives -= 1;
-                lifeCountEl.textContent = lives;
-                hurtCooldown = hurtCooldownMax;
-                x = 50;
-                y = 0;
-                vx = 0;
-                vy = 0;
-                onSurface = true;
-                if (lives <= 0) {
-                    const overlay = document.createElement('div');
-                    overlay.id = 'gameOverOverlay';
-                    overlay.style.position = 'fixed';
-                    overlay.style.left = '0';
-                    overlay.style.top = '0';
-                    overlay.style.width = '100%';
-                    overlay.style.height = '100%';
-                    overlay.style.display = 'flex';
-                    overlay.style.alignItems = 'center';
-                    overlay.style.justifyContent = 'center';
-                    overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
-                    overlay.style.color = '#fff';
-                    overlay.style.fontSize = '36px';
-                    overlay.style.zIndex = 9999;
-                    overlay.textContent = 'เกมจบแล้ว! รีสตาร์ทเกม...';
-                    document.body.appendChild(overlay);
-                    setTimeout(() => {
-                        overlay.remove();
-                        resetGameState();
-                        won = false; // Reset win state
-                        updateMarioPosition(); // Update Mario's position after reset
-                    }, 1500);
-                } else {
-                    updateMarioPosition(); // Update Mario's position after losing a life
+            } else {
+                if (player.isCrouching) {
+                    player.isCrouching = false;
+                    player.y -= (player.normalHeight - player.crouchHeight);
+                    player.height = player.normalHeight;
                 }
             }
 
-            function clamp(value, min, max){ return Math.max(min, Math.min(max, value)); }
+            // เดิน X
+            const currentSpeed = player.isCrouching ? player.crouchSpeed : player.speed;
+            if (keys.left) player.vx = -currentSpeed;
+            else if (keys.right) player.vx = currentSpeed;
+            else player.vx = 0;
 
-            function updateMarioPosition() {
-                const marioScreenX = 50 + x;
-                const cameraWidth = 800;
-                const cameraHeight = 400;
+            player.x += player.vx;
 
-                if (freeCameraMode) {
-                    const currentViewWidth = cameraWidth / editorCameraZoom;
-                    const currentViewHeight = cameraHeight / editorCameraZoom;
-
-                    // Update editor camera position based on keys
-                    if (keys.editorLeft) editorCameraX -= editorCameraSpeed / editorCameraZoom;
-                    else if (keys.editorRight) editorCameraX += editorCameraSpeed / editorCameraZoom;
-                    if (keys.editorUp) editorCameraY -= editorCameraSpeed / editorCameraZoom;
-                    else if (keys.editorDown) editorCameraY += editorCameraSpeed / editorCameraZoom;
-
-                    editorCameraX = clamp(editorCameraX, 0, LEVEL_WIDTH - currentViewWidth);
-                    editorCameraY = clamp(editorCameraY, 0, LEVEL_VIEW_HEIGHT - currentViewHeight);
-                    svg.setAttribute('viewBox', `${editorCameraX} ${editorCameraY} ${currentViewWidth} ${currentViewHeight}`);
-                } else {
-                    mario.setAttribute('transform', `translate(${x},${y})`);
-                    const cameraX = marioScreenX - cameraWidth / 2; // center on mario horizontally
-                    const clampedCameraX = clamp(cameraX, 0, LEVEL_WIDTH - cameraWidth);
-                    svg.setAttribute('viewBox', `${clampedCameraX} 0 ${cameraWidth} ${cameraHeight}`);
+            // ตรวจจับการชนแกน X (ทำเฉพาะวัตถุที่เป็น solid: true)
+            for (let instance of levelInstances) {
+                const typeDef = loadedObjectTypes[instance.type];
+                if (typeDef && typeDef.solid && isColliding(player, instance)) {
+                    if (player.vx > 0) player.x = instance.x - player.width;
+                    else if (player.vx < 0) player.x = instance.x + instance.w;
                 }
             }
 
-            // initialize position (original drawing assumes cx=50 head, so translate 0)
-            updateMarioPosition();
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > worldWidth) player.x = worldWidth - player.width;
 
-            const settingsBtn = document.getElementById('settings-btn');
-            const settingsPanel = document.getElementById('settingsPanel');
-            const difficultySelect = document.getElementById('difficulty-select');
-            const speedRange = document.getElementById('speed-range');
-            const jumpRange = document.getElementById('jump-range');
-            const speedValue = document.getElementById('speed-value');
-            const jumpValue = document.getElementById('jump-value');
-            const applySettingsBtn = document.getElementById('apply-settings');
-
-            function applyDifficultyPreset(level) {
-                if (level === 'easy') {
-                    settings.speed = 5;
-                    settings.jumpPower = 19;
-                    settings.gravity = 1.2;
-                } else if (level === 'hard') {
-                    settings.speed = 8;
-                    settings.jumpPower = 23;
-                    settings.gravity = 1.6;
-                } else {
-                    settings.speed = 6;
-                    settings.jumpPower = 21;
-                    settings.gravity = 1.4;
-                }
-                speedRange.value = settings.speed;
-                jumpRange.value = settings.jumpPower;
-                speedValue.textContent = settings.speed;
-                jumpValue.textContent = settings.jumpPower;
-                applySettings();
+            // กระโดด/ร่วง Y
+            if (keys.up && player.isGrounded) {
+                player.vy = player.jumpForce;
+                player.isGrounded = false;
             }
 
-            function toggleSettingsPanel() {
-                settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+            player.vy += gravity;
+            player.y += player.vy;
+            player.isGrounded = false;
+
+            // ตรวจจับการชนแกน Y
+            for (let instance of levelInstances) {
+                const typeDef = loadedObjectTypes[instance.type];
+                if (typeDef && typeDef.solid && isColliding(player, instance)) {
+                    const objH = instance.h ?? instance.w;
+                    if (player.vy > 0) {
+                        player.y = instance.y - player.height;
+                        player.vy = 0;
+                        player.isGrounded = true;
+                    } else if (player.vy < 0) {
+                        player.y = instance.y + objH;
+                        player.vy = 0;
+                    }
+                }
             }
 
-            settingsBtn.addEventListener('click', toggleSettingsPanel);
-            difficultySelect.addEventListener('change', (e) => applyDifficultyPreset(e.target.value));
-            speedRange.addEventListener('input', (e) => {
-                settings.speed = parseInt(e.target.value, 10);
-                speedValue.textContent = settings.speed;
-            });
-            jumpRange.addEventListener('input', (e) => {
-                settings.jumpPower = parseInt(e.target.value, 10);
-                jumpValue.textContent = settings.jumpPower;
-            });
-            applySettingsBtn.addEventListener('click', () => {
-                applySettings();
-                toggleSettingsPanel();
-            });
+            // คำนวณตำแหน่งกล้อง
+            cameraX = (player.x + player.width / 2) - canvas.width / 2;
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+        }
 
-            document.addEventListener('keydown', (e) => {
-                if (freeCameraMode) {
-                    if (e.key === 'ArrowLeft' || e.key === 'a') keys.editorLeft = true;
-                    else if (e.key === 'ArrowRight' || e.key === 'd') keys.editorRight = true;
-                    else if (e.key === 'ArrowUp' || e.key === 'w') keys.editorUp = true;
-                    else if (e.key === 'ArrowDown' || e.key === 's') keys.editorDown = true;
-                } else {
-                    if (e.key === 'ArrowRight') {
-                        keys.right = true;
-                        walking = true;
-                        mario.classList.remove('flipped');
-                    } else if (e.key === 'ArrowLeft') {
-                        keys.left = true;
-                        walking = true;
-                    } else if (e.key === ' ' || e.key === 'ArrowUp') {
-                        // jump if on ground or on a platform
-                        if (onSurface) {
-                            vy = jumpStrength;
-                            onSurface = false;
-                        }
-                    }
+        // 4. วาดฉากลงบน Canvas
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            // วาดวัตถุทั้งหมดจาก level.json
+            for (let instance of levelInstances) {
+                const typeDef = loadedObjectTypes[instance.type];
+                if (typeDef && typeDef.img) {
+                    // ดึงค่าความสูง h หรือใช้ความกว้าง w แทนหากไม่ได้ระบุ h ใน JSON
+                    const h = instance.h ?? instance.w;
+                    ctx.drawImage(typeDef.img, instance.x, instance.y, instance.w, h);
                 }
-            });
-
-            document.addEventListener('keyup', (e) => {
-                if (freeCameraMode) {
-                    if (e.key === 'ArrowLeft' || e.key === 'a') keys.editorLeft = false;
-                    else if (e.key === 'ArrowUp' || e.key === 'w') keys.editorUp = false;
-                    else if (e.key === 'ArrowDown' || e.key === 's') keys.editorDown = false;
-                    else if (e.key === 'ArrowRight' || e.key === 'd') keys.editorRight = false;
-                } else {
-                    if (e.key === 'ArrowRight') keys.right = false;
-                    if (e.key === 'ArrowLeft') keys.left = false;
-                    if (!keys.left && !keys.right) walking = false;
-                }
-            });
-
-            svg.addEventListener('wheel', (e) => {
-                if (freeCameraMode) {
-                    e.preventDefault(); // Prevent page scrolling
-                    const zoomAmount = 0.1; // How much to zoom per scroll tick
-                    if (e.deltaY < 0) { // Scroll up = zoom in
-                        editorCameraZoom = Math.min(maxZoom, editorCameraZoom + zoomAmount);
-                    } else { // Scroll down = zoom out
-                        editorCameraZoom = Math.max(minZoom, editorCameraZoom - zoomAmount);
-                    }
-                    updateMarioPosition(); // Update camera with new zoom
-                }
-            }, { passive: false }); // Use passive: false to allow preventDefault
-
-            // animation loop for gravity and smooth movement
-            function loop(){
-                if (gameStarted && !freeCameraMode) { // Only apply Mario physics if game has started and not in free camera mode
-                    // apply physics
-                    vy += gravity * (vy > 0 ? fallMultiplier : 1);
-                    y += vy;
-                    onSurface = false;
-                    if (338 + y > groundLevelY) { y = groundLevelY - 338; vy = 0; onSurface = true; } // Land on ground
-                    if (hurtCooldown > 0) hurtCooldown -= 1;
-
-                    // collision with question blocks from below to release coin
-                    // head absolute position
-                    const marioLeft = 35 + x;
-                    const marioRight = 65 + x;
-                    const headX = 50 + x;
-                    const headY = 280 + y; // Absolute Y of Mario's head
-                    const feetY = 338 + y; // Absolute Y of Mario's feet
-
-                    for (const e of enemies) {
-                        if (hurtCooldown <= 0 && marioRight >= e.left && marioLeft <= e.right && feetY >= e.top && headY <= e.bottom) {
-                            loseLife();
-                            break;
-                        }
-                    }
-
-                    // NPC collision
-                    for (const npc of npcs) {
-                        const npcLeft = npc.gx;
-                        const npcRight = npc.gx + npc.gw;
-                        const npcTop = npc.gy;
-                        const npcBottom = npc.gy + npc.gh;
-
-                        const marioOverlapsX = marioRight > npcLeft && marioLeft < npcRight;
-                        const marioOverlapsY = feetY > npcTop && headY < npcBottom;
-
-                        if (marioOverlapsX && marioOverlapsY) {
-                            displayMessage(npc.message);
-                            break; // Only show one NPC message at a time
-                        }
-                    }
-                    for (const b of blocks) {
-                        const blockLeft = b.gx;
-                        const blockRight = b.gx + b.gw;
-                        const blockTop = b.gy;
-                        const blockBottom = b.gy + b.gh;
-                        const horizontalHit = marioRight >= blockLeft && marioLeft <= blockRight;
-
-                        // land on top of the block or stay on top when already there
-                        if (vy >= 0 && prevFeetY <= blockTop + 6 && feetY >= blockTop && horizontalHit) { // If falling and hit top of block
-                            y = blockTop - 338;
-                            vy = 0;
-                            onSurface = true;
-                        }
-
-                        // check upward collision: only Q-blocks should block from below
-                        if (b.isQBlock && vy < 0 && prevHeadY > blockBottom && headY <= blockBottom && horizontalHit) {
-                            if (!b.used) { // If Q-block not used yet
-                                b.used = true;
-                                const coin = document.createElementNS('http://www.w3.org/2000/svg','circle');
-                                coin.setAttribute('cx', (b.gx + b.gw/2));
-                                coin.setAttribute('cy', b.gy - 10);
-                                coin.setAttribute('r', 8);
-                                coin.setAttribute('fill','#FFD700');
-                                svg.appendChild(coin);
-                                const anim = coin.animate([
-                                    { transform: 'translateY(0)', opacity: 1 },
-                                    { transform: 'translateY(-60px)', opacity: 0 }
-                                ], { duration: 700, easing: 'cubic-bezier(.2,.8,.2,1)'});
-                                anim.onfinish = () => { coin.remove(); };
-                                coins += 1;
-                                coinCountEl.textContent = coins;
-                            }
-                            // play bump: stop upward movement and nudge down. Animate only if group exists.
-                            vy = 4;
-                            if (b.group && typeof b.group.animate === 'function') {
-                                b.group.animate([{transform: 'translate(0,0)'},{transform:'translate(0,6)'},{transform:'translate(0,0)'}],{duration:150});
-                            }
-                        }
-                    }
-                    prevHeadY = headY; // Store current head Y for next frame's collision check
-                    prevFeetY = feetY; // Store current feet Y for next frame's collision check
-
-                    // check for reaching end flag
-                    if (!won && headX >= endFlagX) {
-                        won = true;
-                        // show win message overlay
-                        const overlay = document.createElement('div');
-                        overlay.id = 'winOverlay';
-                        overlay.style.position = 'fixed';
-                        overlay.style.left = '0';
-                        overlay.style.top = '0';
-                        overlay.style.width = '100%';
-                        overlay.style.height = '100%';
-                        overlay.style.display = 'flex';
-                        overlay.style.alignItems = 'center';
-                        overlay.style.justifyContent = 'center';
-                        overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
-                        overlay.style.color = '#fff';
-                        overlay.style.fontSize = '36px';
-                        overlay.style.zIndex = 9999;
-                        overlay.textContent = 'ชนะเกม! เริ่มเกมใหม่...';
-                        document.body.appendChild(overlay);
-                        // after short delay restart
-                        setTimeout(() => {
-                            // remove overlay
-                            overlay.remove();
-                            // reset game state
-                            resetGameState();
-                            won = false;
-                            updateMarioPosition();
-                        }, 1500);
-                    }
-
-                    // horizontal movement smoothing
-                    if (keys.right && !keys.left) {
-                        vx += accel;
-                    } else if (keys.left && !keys.right) {
-                        vx -= accel;
-                    } else {
-                        // apply deceleration toward zero
-                        if (vx > 0) vx = Math.max(0, vx - decel);
-                        else if (vx < 0) vx = Math.min(0, vx + decel);
-                    }
-                    // clamp speed
-                    vx = Math.max(-maxSpeed, Math.min(maxSpeed, vx));
-                    // apply velocity to position
-                    const marioWidth = 30; // Based on marioLeft and marioRight collision box (65-35)
-                    x += vx;
-
-                    // Check for horizontal boundaries and stop movement
-                    if (x < 0) {
-                        x = 0;
-                        vx = 0; // Stop horizontal movement when hitting left boundary
-                    } else if (x > LEVEL_WIDTH - marioWidth) {
-                        x = LEVEL_WIDTH - marioWidth;
-                        vx = 0; // Stop horizontal movement when hitting right boundary
-                    }
-                }
-                updateMarioPosition(); // Always update camera, whether Mario or editor
-                requestAnimationFrame(loop);
             }
-            requestAnimationFrame(loop);
 
-            // Load a default empty level or a pre-defined one on start
-            document.addEventListener('DOMContentLoaded', () => {
-                // To start with a blank slate, we just do nothing.
-                // Or to load a default level from localStorage:
-                // const defaultLevel = localStorage.getItem('level_default');
-                // if (defaultLevel) loadLevelFromData(JSON.parse(defaultLevel));
-            });
-        })();
+            // วาดตัวละคร
+            const currentChar = loadedCharacters[player.selectedCharacterId];
+            if (currentChar) {
+                const activeImg = player.isCrouching ? currentChar.imgCrouch : currentChar.imgNormal;
+                ctx.drawImage(activeImg, player.x, player.y, player.width, player.height);
+            }
+
+            ctx.restore();
+
+            // UI
+            ctx.fillStyle = "black";
+            ctx.font = "16px sans-serif";
+            ctx.fillText(`Player X: ${Math.floor(player.x)} | Objects: ${levelInstances.length}`, 10, 25);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        loadGameData();
     </script>
+
 </body>
+
 </html>

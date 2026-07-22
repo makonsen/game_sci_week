@@ -49,9 +49,9 @@
         async function loadGameData() {
             try {
                 const [levelRes, objectsRes, charsRes] = await Promise.all([
-                    fetch('level.json'),
-                    fetch('objects.json'),
-                    fetch('characters.json')
+                    fetch('data/level.json'),
+                    fetch('data/objects.json'),
+                    fetch('data/characters.json')
                 ]);
 
                 levelInstances = await levelRes.json();

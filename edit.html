@@ -3,38 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Level Editor</title>
+    <title>2D Level Editor - Dynamic Manifest Level Loader</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body { font-family: 'Segoe UI', sans-serif; background: #1e1e24; color: #fff; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* Top Bar & Sidebar */
-        #top-bar { height: 50px; background: #2b2d42; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 2px solid #3d405b; z-index: 10; }
-        #top-bar h1 { font-size: 18px; color: #4ea8de; }
-        .action-btns { display: flex; gap: 10px; }
+        #top-bar { height: 50px; background: #2b2d42; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 2px solid #3d405b; z-index: 10; }
+        #top-bar h1 { font-size: 16px; color: #4ea8de; }
+        .top-group { display: flex; align-items: center; gap: 10px; }
 
-        .btn { padding: 7px 14px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; }
         .btn-green { background: #2ecc71; color: white; } .btn-green:hover { background: #27ae60; }
         .btn-blue { background: #3498db; color: white; } .btn-blue:hover { background: #2980b9; }
         .btn-purple { background: #9b59b6; color: white; } .btn-purple:hover { background: #8e44ad; }
         .btn-dark { background: #4a4e69; color: white; } .btn-dark:hover { background: #6c757d; }
-        .btn-icon { width: 16px; height: 16px; object-fit: contain; }
+        .btn-icon { width: 14px; height: 14px; object-fit: contain; }
+
+        .level-control { display: flex; align-items: center; gap: 8px; background: #1a1b26; padding: 4px 10px; border-radius: 6px; border: 1px solid #3d405b; }
+        .level-control label { font-size: 12px; font-weight: bold; color: #f1c40f; }
+        .level-control select { background: #2b2d42; color: #fff; border: 1px solid #4a4e69; padding: 4px 8px; border-radius: 4px; font-weight: bold; outline: none; }
 
         #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
         #sidebar { width: 260px; background: #2b2d42; border-right: 2px solid #3d405b; padding: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 5; overflow-y: auto; }
-        #sidebar h3 { font-size: 14px; color: #8d99ae; text-transform: uppercase; margin-bottom: 5px; }
+        #sidebar h3 { font-size: 13px; color: #8d99ae; text-transform: uppercase; margin-bottom: 5px; }
         #dynamic-buttons { display: flex; flex-direction: column; gap: 8px; }
 
-        /* Inspector Panel */
         #inspector-panel { display: none; border-top: 2px solid #3d405b; padding-top: 15px; margin-top: 5px; }
         .prop-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
         .prop-group label { font-size: 12px; color: #8d99ae; font-weight: bold; }
         .input-unit { display: flex; align-items: center; gap: 4px; }
         .input-unit input, .input-unit select { width: 100px; background: #101014; border: 1px solid #4a4e69; color: #2ecc71; border-radius: 4px; padding: 5px 6px; font-weight: bold; font-size: 12px; outline: none; }
-        .input-unit input:focus, .input-unit select:focus { border-color: #4ea8de; }
-        .input-unit span { font-size: 11px; color: #8d99ae; }
 
-        /* Workspace & Canvas */
         #workspace { flex: 1; position: relative; background: #101014; overflow: hidden; cursor: grab; }
         #workspace:active { cursor: grabbing; }
 
@@ -46,7 +45,6 @@
 
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 
-        /* Boundaries & Zoom */
         .world-bounds { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
         .camera-frame { position: absolute; top: 0; left: 0; width: 800px; height: 400px; border: 2px dashed #f39c12; box-shadow: inset 0 0 20px rgba(243, 156, 18, 0.15); }
         .boundary-line-left { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #2ecc71; }
@@ -55,16 +53,11 @@
         .boundary-badge { position: absolute; background: rgba(0,0,0,0.85); color: white; font-size: 12px; font-weight: bold; padding: 5px 12px; border-radius: 6px; pointer-events: none; }
         .badge-origin { top: 12px; left: 12px; background: #2ecc71; color: #111; z-index: 10; }
         .badge-camera { top: 12px; left: 550px; background: #f39c12; color: #111; }
-        .badge-left { top: 60px; left: 12px; border-left: 3px solid #2ecc71; }
-        .badge-bottom { top: 412px; left: 12px; background: #c0392b; }
 
         #zoom-controls { position: absolute; bottom: 20px; right: 20px; background: rgba(43,45,66,0.9); border: 1px solid #3d405b; padding: 6px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; z-index: 20; }
         #zoom-controls button { background: #4a4e69; color: white; border: none; width: 28px; height: 28px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        #zoom-controls button:hover { background: #4ea8de; }
-        #zoom-text { font-size: 13px; font-weight: bold; width: 50px; text-align: center; color: #4ea8de; }
 
-        /* Objects & Handles */
-        .game-object { position: absolute; background-size: 100% 100%; background-position: center; border: 1px solid transparent; cursor: move; z-index: 3; }
+        .game-object { position: absolute; background-size: 100% 100%; border: 1px solid transparent; cursor: move; z-index: 3; }
         .game-object:hover { outline: 2px dashed #4ea8de; }
         .game-object.selected { outline: 2px solid #f1c40f !important; }
         .delete-btn { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; background: #e74c3c; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; z-index: 20; }
@@ -84,7 +77,6 @@
 
         .pipe-badge { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.75); color: #2ecc71; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-family: monospace; pointer-events: none; }
 
-        /* Modal */
         #playtest-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; display: none; align-items: center; justify-content: center; }
         #playtest-container { width: 90vw; height: 88vh; background: #1a252f; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 2px solid #34495e; }
         #playtest-header { background: #2c3e50; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #34495e; }
@@ -96,11 +88,17 @@
 <body>
 
     <div id="top-bar">
-        <h1>🛠️ 2D Level Editor</h1>
-        <div class="action-btns">
-            <button class="btn btn-green" onclick="startPlaytest()">🎮 ทดลองเล่นด่าน</button>
-            <button class="btn btn-purple" onclick="exportJSON()">📥 ส่งออก level.json</button>
-            <button class="btn btn-dark" onclick="importJSON()">📤 โหลดไฟล์ JSON</button>
+        <h1>🛠️ Level Editor</h1>
+
+        <div class="level-control">
+            <label>🎮 เลือกด่าน:</label>
+            <select id="sel-level" onchange="switchLevel(parseInt(this.value))"></select>
+        </div>
+
+        <div class="top-group">
+            <button class="btn btn-green" onclick="startPlaytest()">🎮 ทดลองเล่น</button>
+            <button class="btn btn-purple" onclick="exportCurrentLevel()">📥 บันทึกไฟล์ด่านนี้</button>
+            <button class="btn btn-dark" onclick="importJSON()">📤 โหลด JSON</button>
             <input type="file" id="file-input" accept=".json" style="display: none;" onchange="handleFileSelect(event)">
         </div>
     </div>
@@ -131,15 +129,13 @@
                     <div class="boundary-line-bottom"></div>
                     <div class="boundary-badge badge-origin">🚩 จุดเริ่มด่าน (X: 0, Y: 0)</div>
                     <div class="boundary-badge badge-camera">📺 จอกล้องเกม (800 × 400px)</div>
-                    <div class="boundary-badge badge-left">⬅️ ขอบซ้ายสุด (X: 0)</div>
-                    <div class="boundary-badge badge-bottom">⚠️ ขอบล่างหน้าจอ / ตกแมพตาย (Y: 400)</div>
                 </div>
                 <svg id="svg-layer"></svg>
             </div>
 
             <div id="zoom-controls">
                 <button onclick="changeZoom(-0.1)">-</button>
-                <span id="zoom-text">100%</span>
+                <span id="zoom-text" style="color: #4ea8de; font-weight: bold; width: 45px; text-align: center;">100%</span>
                 <button onclick="changeZoom(0.1)">+</button>
                 <button onclick="resetZoom()" style="width: auto; padding: 0 8px;">Reset</button>
             </div>
@@ -149,7 +145,7 @@
     <div id="playtest-modal">
         <div id="playtest-container">
             <div id="playtest-header">
-                <h4>🎮 หน้าต่างทดลองเล่นด่าน</h4>
+                <h4 id="playtest-title">🎮 หน้าต่างทดลองเล่นด่าน</h4>
                 <button class="close-playtest-btn" onclick="closePlaytest()">❌ ปิดหน้าต่าง (ESC)</button>
             </div>
             <iframe id="playtest-iframe" src="about:blank"></iframe>
@@ -160,13 +156,51 @@
         const $ = s => document.querySelector(s);
         const $$ = s => document.querySelectorAll(s);
 
+        let manifest = [];
+        let currentLevelIdx = 0;
         let loadedObjectTypes = {}, pipeCounter = 1, selectedObj = null;
         let scale = 1, viewX = 0, viewY = 0, isPanning = false, panStart = { x: 0, y: 0 };
-        const gridSize = 20, keys = {};
+        const gridSize = 20;
+
+        // --- ระบบควบคุมมุมกล้องด้วย WASD / ลูกศร ---
+        const editorKeys = {};
+        const PAN_SPEED = 12;
+
+        window.addEventListener('keydown', e => {
+            // ป้องกันทำงานเมื่อกำลังพิมพ์ใน Input หรือ Select
+            if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+            if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                editorKeys[e.code] = true;
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                editorKeys[e.code] = false;
+            }
+        });
+
+        function handleEditorPanning() {
+            // ปิดไม่ให้เลื่อนถ้านิ้วเปิดหน้าต่างทดลองเล่นอยู่
+            if ($('#playtest-modal').style.display === 'flex') {
+                requestAnimationFrame(handleEditorPanning);
+                return;
+            }
+
+            let moved = false;
+            if (editorKeys['KeyW'] || editorKeys['ArrowUp'])    { viewY += PAN_SPEED; moved = true; }
+            if (editorKeys['KeyS'] || editorKeys['ArrowDown'])  { viewY -= PAN_SPEED; moved = true; }
+            if (editorKeys['KeyA'] || editorKeys['ArrowLeft'])  { viewX += PAN_SPEED; moved = true; }
+            if (editorKeys['KeyD'] || editorKeys['ArrowRight']) { viewX -= PAN_SPEED; moved = true; }
+
+            if (moved) updateTransform();
+            requestAnimationFrame(handleEditorPanning);
+        }
 
         const svgToUrl = svg => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-        // โหลดปุ่มวัตถุ
+        // โหลดรายการวัตถุ
         async function loadObjectsDefinition() {
             try {
                 loadedObjectTypes = await (await fetch('data/objects.json')).json();
@@ -181,10 +215,53 @@
             }
         }
 
-        // สร้างวัตถุบน Canvas
+        // โหลด Manifest JSON
+        async function loadManifest() {
+            try {
+                const res = await fetch('data/levels_manifest.json');
+                manifest = await res.json();
+            } catch (e) {
+                manifest = [
+                    { name: "ด่านเริ่มต้น", file: "levels/level1.json" },
+                    { name: "ด่านกระโดด", file: "levels/level2.json" },
+                    { name: "ด่านว่าง", file: "levels/empty.json" },
+                    { name: "ด่านทดลอง", file: "levels/level3.json" }
+                ];
+            }
+            renderLevelDropdown();
+            await fetchAndLoadLevel(0);
+        }
+
+        function renderLevelDropdown() {
+            $('#sel-level').innerHTML = manifest.map((item, idx) => `
+                <option value="${idx}">${item.name} (${item.file})</option>
+            `).join('');
+        }
+
+        async function fetchAndLoadLevel(idx) {
+            currentLevelIdx = idx;
+            const levelInfo = manifest[idx];
+            if (!levelInfo) return;
+
+            try {
+                const res = await fetch(levelInfo.file);
+                if (!res.ok) throw new Error("File not found");
+                const levelData = await res.json();
+                loadLevelData(levelData);
+            } catch (err) {
+                console.warn(`ไม่พบไฟล์ ${levelInfo.file} - สร้างด่านว่างขึ้นใหม่`);
+                loadLevelData([]);
+            }
+        }
+
+        async function switchLevel(idx) {
+            await fetchAndLoadLevel(idx);
+        }
+
+        // สร้างวัตถุ
         function createObject(type, data = {}) {
             if (type === 'player_start' && $$('.game-object[data-type="player_start"]').length >= 1) {
-                return alert('มีจุดเริ่มต้น (player_start) ในด่านแล้ว! จำกัดไม่เกิน 1 อัน');
+                return alert('มีจุดเริ่มต้น (player_start) ในด่านแล้ว!');
             }
 
             const def = loadedObjectTypes[type] || {};
@@ -231,7 +308,6 @@
             updatePipeLines();
         }
 
-        // ระบบ ลาก / ย่อ-ขยาย วัตถุ
         function attachPointerEvents(obj) {
             let mode = 'none', start = {};
 
@@ -278,7 +354,6 @@
             };
         }
 
-        // ระบบเลือกวัตถุ & Inspector
         function selectObject(obj) {
             $$('.game-object').forEach(o => o.classList.remove('selected'));
             selectedObj = obj;
@@ -332,7 +407,6 @@
             };
         });
 
-        // เส้นเชื่อมวาร์ปท่อ
         function updatePipeLines() {
             const svg = $('#svg-layer');
             svg.innerHTML = '';
@@ -344,13 +418,12 @@
                     const y1 = parseInt(p.style.top) + parseInt(p.style.height) / 2;
                     const x2 = parseInt(target.style.left) + parseInt(target.style.width) / 2;
                     const y2 = parseInt(target.style.top) + parseInt(target.style.height) / 2;
-
                     svg.innerHTML += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2ecc71" stroke-width="3" stroke-dasharray="6"/>`;
                 }
             });
         }
 
-        // การ Pan & Zoom พื้นที่ทำงาน
+        // Pan Workspace ด้วยการคลิกเมาส์ค้าง
         const workspace = $('#workspace');
         workspace.onpointerdown = e => {
             if (e.target === workspace || e.target === $('#canvas') || e.target === $('#svg-layer')) {
@@ -384,24 +457,6 @@
             $('#zoom-text').innerText = Math.round(scale * 100) + '%';
         }
 
-        // คีย์บอร์ดเลื่อนกล้อง
-        window.onkeydown = window.onkeyup = e => {
-            if ($('#playtest-modal').style.display === 'flex' || ['INPUT','SELECT'].includes(document.activeElement.tagName)) return;
-            const kMap = { KeyW:'up', ArrowUp:'up', KeyS:'down', ArrowDown:'down', KeyA:'left', ArrowLeft:'left', KeyD:'right', ArrowRight:'right' };
-            if (kMap[e.code]) keys[kMap[e.code]] = e.type === 'keydown';
-            if (e.key === 'Escape') closePlaytest();
-        };
-
-        function editorLoop() {
-            if (keys.up) viewY += 10;
-            if (keys.down) viewY -= 10;
-            if (keys.left) viewX += 10;
-            if (keys.right) viewX -= 10;
-            if (keys.up || keys.down || keys.left || keys.right) updateTransform();
-            requestAnimationFrame(editorLoop);
-        }
-
-        // Import / Export & Playtest Modal
         function getLevelData() {
             return Array.from($$('.game-object')).map(obj => {
                 const data = {
@@ -423,8 +478,13 @@
             data.forEach(i => createObject(i.type, i));
         }
 
+        // Playtest
         function startPlaytest() {
-            window.tempLevelData = getLevelData();
+            window.tempCurrentLevelData = getLevelData();
+            window.tempManifest = manifest;
+            window.tempCurrentIdx = currentLevelIdx;
+
+            $('#playtest-title').innerText = `🎮 ทดลองเล่น: ${manifest[currentLevelIdx]?.name}`;
             $('#playtest-iframe').src = 'index.html?t=' + Date.now();
             $('#playtest-modal').style.display = 'flex';
             setTimeout(() => $('#playtest-iframe').contentWindow?.focus(), 100);
@@ -435,10 +495,12 @@
             $('#playtest-iframe').src = 'about:blank';
         }
 
-        function exportJSON() {
-            const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getLevelData(), null, 2));
+        function exportCurrentLevel() {
+            const data = getLevelData();
+            const filename = manifest[currentLevelIdx]?.file.split('/').pop() || "level.json";
+            const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
             const a = document.createElement('a');
-            a.href = str; a.download = "level.json"; a.click();
+            a.href = str; a.download = filename; a.click();
         }
 
         function importJSON() { $('#file-input').click(); }
@@ -447,18 +509,18 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = ev => {
-                try { loadLevelData(JSON.parse(ev.target.result)); } catch (err) { alert("ไฟล์ JSON ไม่ถูกต้อง!"); }
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    loadLevelData(data);
+                } catch (err) { alert("ไฟล์ JSON ไม่ถูกต้อง!"); }
             };
             reader.readAsText(file);
         }
 
         async function initEditor() {
             await loadObjectsDefinition();
-            try {
-                const res = await fetch('data/level.json');
-                if (res.ok) loadLevelData(await res.json());
-            } catch (e) {}
-            requestAnimationFrame(editorLoop);
+            await loadManifest();
+            requestAnimationFrame(handleEditorPanning); // เริ่มต้น Loop เลื่อนกล้องด้วยคีย์บอร์ด
         }
 
         initEditor();

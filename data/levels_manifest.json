@@ -1,15 +1,11 @@
 [
     {
         "name": "ด่านเริ่มต้น",
-        "file": "levels/level1.json"
+        "file": "levels/level.json"
     },
     {
         "name": "ด่านกระโดด",
         "file": "levels/level2.json"
-    },
-    {
-        "name": "ด่านว่าง",
-        "file": "levels/empty.json"
     },
     {
         "name": "ด่านทดลอง",

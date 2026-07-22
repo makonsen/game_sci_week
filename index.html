@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>2D Auto-Runner Game</title>
+    <title>2D Auto-Runner Game - Manifest Level Loader</title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -15,14 +15,14 @@
 
     <script>
         const canvas = document.getElementById("gameCanvas"), ctx = canvas.getContext("2d");
-        let level = [], objs = {}, chars = {}, spawn = { x: 50, y: 100 }, cameraX = 0;
+        let manifest = [], currentLevelIdx = 0, level = [];
+        let objs = {}, chars = {}, spawn = { x: 50, y: 100 }, cameraX = 0;
+        let levelCleared = false, gameCleared = false;
 
-        // ระบบควบคุมสำหรับ Auto-Run (ใช้เฉพาะปุ่มขึ้น/ลง)
         const keys = { up: 0, down: 0 };
         const keyMap = { ArrowUp:'up', KeyW:'up', Space:'up', ArrowDown:'down', KeyS:'down' };
         window.onkeydown = window.onkeyup = e => keyMap[e.code] && (keys[keyMap[e.code]] = e.type === 'keydown' ? 1 : 0);
 
-        // ตัวละคร
         const p = {
             x: 50, y: 100, w: 40, h: 50, normH: 50, crouchH: 25,
             vx: 0, vy: 0, speed: 5, crouchSpeed: 2.5, jump: -12,
@@ -31,31 +31,91 @@
             charId: "hero_red"
         };
 
-        // Helpers
         const svgToImg = svg => { const img = new Image(); img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })); return img; };
         const collide = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + (b.h ?? b.w) && a.y + a.h > b.y;
         const isSolid = inst => objs[inst.type]?.solid;
         const resetPlayer = () => Object.assign(p, { x: spawn.x, y: spawn.y, vx: 0, vy: 0, crouching: false, h: p.normH });
 
-        // โหลดข้อมูลเกม
+        // โหลดข้อมูลเกมและดาวน์โหลด Manifest JSON
         async function loadGameData() {
             try {
                 const [oRes, cRes] = await Promise.all([fetch('data/objects.json'), fetch('data/characters.json')]);
-                level = (window.parent?.tempLevelData?.length) ? window.parent.tempLevelData : await (await fetch('data/level.json')).json();
-
-                const start = level.find(i => i.type === 'player_start');
-                if (start) { spawn = { x: start.x, y: start.y }; resetPlayer(); }
-                level = level.filter(i => i.type !== 'player_start');
-
                 const oData = await oRes.json(), cData = await cRes.json();
                 Object.entries(oData).forEach(([k, v]) => objs[k] = { ...v, solid: v.solid ?? true, img: svgToImg(v.svg) });
                 cData.characters.forEach(c => chars[c.id] = { name: c.name, norm: svgToImg(c.svgNormal), crouch: svgToImg(c.svgCrouch) });
 
+                // กรณี Playtest จาก Editor
+                if (window.parent?.tempManifest) {
+                    manifest = window.parent.tempManifest;
+                    currentLevelIdx = window.parent.tempCurrentIdx || 0;
+                    if (window.parent.tempCurrentLevelData) {
+                        setupLevelObjects(window.parent.tempCurrentLevelData);
+                        loop();
+                        return;
+                    }
+                } else {
+                    // ดาวน์โหลด Manifest JSON ปกติ
+                    const mRes = await fetch('data/levels_manifest.json');
+                    manifest = await mRes.json();
+                }
+
+                await loadLevelByManifestIndex(currentLevelIdx);
                 loop();
             } catch (e) { console.error("Load Error:", e); }
         }
 
-        // เช็คการยืน/มุดท่อ
+        async function loadLevelByManifestIndex(idx) {
+            if (idx >= manifest.length) {
+                gameCleared = true;
+                return;
+            }
+
+            currentLevelIdx = idx;
+            levelCleared = false;
+            gameCleared = false;
+
+            const targetFile = manifest[idx].file;
+            try {
+                const res = await fetch(targetFile);
+                const levelData = await res.json();
+                setupLevelObjects(levelData);
+            } catch (err) {
+                console.warn(`โหลดไฟล์ด่าน ${targetFile} ไม่สำเร็จ - ใช้ด่านว่าง`);
+                setupLevelObjects([]);
+            }
+        }
+
+        function setupLevelObjects(levelData) {
+            level = JSON.parse(JSON.stringify(levelData));
+            const start = level.find(i => i.type === 'player_start');
+            spawn = start ? { x: start.x, y: start.y } : { x: 50, y: 100 };
+            level = level.filter(i => i.type !== 'player_start');
+            resetPlayer();
+        }
+
+        // ระบบเมื่อเข้าเส้นชัย
+        function triggerNextLevel() {
+            if (levelCleared) return;
+            levelCleared = true;
+
+            // 🎯 ปิดหน้าต่าง Playtest อัตโนมัติเมื่ออยู่ใน Editor
+            if (window.parent && typeof window.parent.closePlaytest === 'function' && window.parent.tempManifest) {
+                setTimeout(() => {
+                    window.parent.closePlaytest();
+                }, 800);
+                return;
+            }
+
+            // โหมดเล่นเกมปกติ
+            setTimeout(async () => {
+                if (currentLevelIdx + 1 < manifest.length) {
+                    await loadLevelByManifestIndex(currentLevelIdx + 1);
+                } else {
+                    gameCleared = true;
+                }
+            }, 1500);
+        }
+
         const canStand = () => !level.some(i => isSolid(i) && collide({ x: p.x, y: p.y - (p.normH - p.crouchH), w: p.w, h: p.normH }, i));
         
         function checkPipe() {
@@ -72,9 +132,9 @@
             }
         }
 
-        // คำนวณฟิสิกส์
         function update() {
-            // ระบบมุดท่อ
+            if (gameCleared || levelCleared) return;
+
             if (p.pipe.active) {
                 if (p.pipe.state === 'entering') {
                     p.y += 2;
@@ -96,7 +156,6 @@
 
             checkPipe();
 
-            // ย่อตัว/ยืน
             const hDiff = p.normH - p.crouchH;
             if (keys.down && p.grounded) {
                 if (!p.crouching) { p.crouching = true; p.y += hDiff; p.h = p.crouchH; }
@@ -104,13 +163,17 @@
                 p.crouching = false; p.y -= hDiff; p.h = p.normH;
             }
 
-            // Auto-Run เคลื่อนที่ไปข้างหน้าอัตโนมัติ
             p.vx = p.crouching ? p.crouchSpeed : p.speed;
             p.x += p.vx;
-            level.filter(isSolid).forEach(i => collide(p, i) && (p.x = i.x - p.w));
+
+            level.forEach(i => {
+                if ((i.type === 'goal' || i.type === 'flag') && collide(p, i)) triggerNextLevel();
+                if (isSolid(i) && collide(p, i)) p.x = i.x - p.w;
+            });
+
+            if (p.x >= 4950) triggerNextLevel();
             p.x = Math.max(0, Math.min(5000 - p.w, p.x));
 
-            // เคลื่อนที่แกน Y / แรงโน้มถ่วง
             if (keys.up && p.grounded) { p.vy = p.jump; p.grounded = false; }
             p.vy += 0.6;
             p.y += p.vy;
@@ -127,7 +190,6 @@
             cameraX = Math.max(0, Math.min(5000 - canvas.width, p.x + p.w / 2 - canvas.width / 2));
         }
 
-        // วาดผล
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
@@ -139,17 +201,45 @@
                 }
             });
 
-            drawObjects(false); // วัตถุทั่วไป
+            drawObjects(false);
             const c = chars[p.charId];
-            if (c) ctx.drawImage(p.crouching ? c.crouch : c.norm, p.x, p.y, p.w, p.h); // ตัวละคร
-            drawObjects(true);  // ท่อ (วาดทับ)
+            if (c) ctx.drawImage(p.crouching ? c.crouch : c.norm, p.x, p.y, p.w, p.h);
+            drawObjects(true);
 
             ctx.restore();
 
+            const currentLevelName = manifest[currentLevelIdx]?.name || `ด่านที่ ${currentLevelIdx + 1}`;
             ctx.fillStyle = "black";
-            ctx.font = "16px sans-serif";
-            ctx.fillText(`Auto-Running | X: ${Math.floor(p.x)} Y: ${Math.floor(p.y)}`, 10, 25);
+            ctx.font = "bold 16px sans-serif";
+            ctx.fillText(`ด่าน: ${currentLevelName} (${currentLevelIdx + 1}/${manifest.length}) | X: ${Math.floor(p.x)}`, 10, 25);
+
+            if (levelCleared) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#2ecc71";
+                ctx.font = "bold 32px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(`🎉 ผ่านด่าน!`, canvas.width / 2, canvas.height / 2);
+                ctx.textAlign = "left";
+            }
+
+            if (gameCleared) {
+                ctx.fillStyle = "rgba(0,0,0,0.85)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#f1c40f";
+                ctx.font = "bold 36px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(`🏆 ยินดีด้วย! คุณเล่นจบทุกด่านแล้ว`, canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = "18px sans-serif";
+                ctx.fillStyle = "#fff";
+                ctx.fillText(`กด [R] เพื่อเริ่มใหม่ตั้งแต่ด่านแรก`, canvas.width / 2, canvas.height / 2 + 30);
+                ctx.textAlign = "left";
+            }
         }
+
+        window.addEventListener('keydown', async e => {
+            if (gameCleared && e.code === 'KeyR') await loadLevelByManifestIndex(0);
+        });
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loadGameData();

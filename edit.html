@@ -6,165 +6,90 @@
     <title>2D Level Editor</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e24; color: #fff; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1e1e24; color: #fff; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* Top Bar */
-        #top-bar { height: 50px; background-color: #2b2d42; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 2px solid #3d405b; z-index: 10; }
-        #top-bar h1 { font-size: 18px; color: #4ea8de; display: flex; align-items: center; gap: 8px; }
+        /* Top Bar & Sidebar */
+        #top-bar { height: 50px; background: #2b2d42; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 2px solid #3d405b; z-index: 10; }
+        #top-bar h1 { font-size: 18px; color: #4ea8de; }
         .action-btns { display: flex; gap: 10px; }
 
-        /* Buttons */
-        .btn { padding: 7px 14px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; }
-        .btn-green { background-color: #2ecc71; color: white; }
-        .btn-green:hover { background-color: #27ae60; }
-        .btn-blue { background-color: #3498db; color: white; }
-        .btn-blue:hover { background-color: #2980b9; }
-        .btn-purple { background-color: #9b59b6; color: white; }
-        .btn-purple:hover { background-color: #8e44ad; }
-        .btn-dark { background-color: #4a4e69; color: white; }
-        .btn-dark:hover { background-color: #6c757d; }
+        .btn { padding: 7px 14px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-green { background: #2ecc71; color: white; } .btn-green:hover { background: #27ae60; }
+        .btn-blue { background: #3498db; color: white; } .btn-blue:hover { background: #2980b9; }
+        .btn-purple { background: #9b59b6; color: white; } .btn-purple:hover { background: #8e44ad; }
+        .btn-dark { background: #4a4e69; color: white; } .btn-dark:hover { background: #6c757d; }
         .btn-icon { width: 16px; height: 16px; object-fit: contain; }
 
-        /* Main Container */
         #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
-        #sidebar { width: 260px; background-color: #2b2d42; border-right: 2px solid #3d405b; padding: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 5; overflow-y: auto; }
-        #sidebar h3 { font-size: 14px; color: #8d99ae; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        #sidebar { width: 260px; background: #2b2d42; border-right: 2px solid #3d405b; padding: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 5; overflow-y: auto; }
+        #sidebar h3 { font-size: 14px; color: #8d99ae; text-transform: uppercase; margin-bottom: 5px; }
         #dynamic-buttons { display: flex; flex-direction: column; gap: 8px; }
 
-        /* Inspector / Properties Panel */
-        #inspector-panel {
-            display: none;
-            border-top: 2px solid #3d405b;
-            padding-top: 15px;
-            margin-top: 5px;
-        }
+        /* Inspector Panel */
+        #inspector-panel { display: none; border-top: 2px solid #3d405b; padding-top: 15px; margin-top: 5px; }
         .prop-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
         .prop-group label { font-size: 12px; color: #8d99ae; font-weight: bold; }
         .input-unit { display: flex; align-items: center; gap: 4px; }
-        .input-unit input, .input-unit select {
-            width: 100px;
-            background: #101014;
-            border: 1px solid #4a4e69;
-            color: #2ecc71;
-            border-radius: 4px;
-            padding: 5px 6px;
-            font-weight: bold;
-            font-size: 12px;
-            outline: none;
-        }
+        .input-unit input, .input-unit select { width: 100px; background: #101014; border: 1px solid #4a4e69; color: #2ecc71; border-radius: 4px; padding: 5px 6px; font-weight: bold; font-size: 12px; outline: none; }
         .input-unit input:focus, .input-unit select:focus { border-color: #4ea8de; }
         .input-unit span { font-size: 11px; color: #8d99ae; }
 
         /* Workspace & Canvas */
-        #workspace { flex: 1; position: relative; background-color: #101014; overflow: hidden; cursor: grab; }
+        #workspace { flex: 1; position: relative; background: #101014; overflow: hidden; cursor: grab; }
         #workspace:active { cursor: grabbing; }
 
         #canvas {
-            position: absolute;
-            width: 5000px;
-            height: 2000px;
-            transform-origin: 0 0;
-            background-color: #141419;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            position: absolute; width: 5000px; height: 2000px; transform-origin: 0 0; background: #141419;
+            background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
             background-size: 20px 20px;
         }
 
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 
-        /* Zoom Controls Overlay */
-        #zoom-controls {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(43, 45, 66, 0.9);
-            border: 1px solid #3d405b;
-            padding: 6px 12px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 20;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-        #zoom-controls button {
-            background: #4a4e69;
-            color: white;
-            border: none;
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+        /* Boundaries & Zoom */
+        .world-bounds { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        .camera-frame { position: absolute; top: 0; left: 0; width: 800px; height: 400px; border: 2px dashed #f39c12; box-shadow: inset 0 0 20px rgba(243, 156, 18, 0.15); }
+        .boundary-line-left { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #2ecc71; }
+        .boundary-line-bottom { position: absolute; top: 400px; left: 0; width: 100%; height: 4px; background: #e74c3c; }
+
+        .boundary-badge { position: absolute; background: rgba(0,0,0,0.85); color: white; font-size: 12px; font-weight: bold; padding: 5px 12px; border-radius: 6px; pointer-events: none; }
+        .badge-origin { top: 12px; left: 12px; background: #2ecc71; color: #111; z-index: 10; }
+        .badge-camera { top: 12px; left: 550px; background: #f39c12; color: #111; }
+        .badge-left { top: 60px; left: 12px; border-left: 3px solid #2ecc71; }
+        .badge-bottom { top: 412px; left: 12px; background: #c0392b; }
+
+        #zoom-controls { position: absolute; bottom: 20px; right: 20px; background: rgba(43,45,66,0.9); border: 1px solid #3d405b; padding: 6px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; z-index: 20; }
+        #zoom-controls button { background: #4a4e69; color: white; border: none; width: 28px; height: 28px; border-radius: 4px; font-weight: bold; cursor: pointer; }
         #zoom-controls button:hover { background: #4ea8de; }
         #zoom-text { font-size: 13px; font-weight: bold; width: 50px; text-align: center; color: #4ea8de; }
 
-        /* Visual Markers & Bounds */
-        .world-bounds { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-        .camera-frame { position: absolute; top: 0; left: 0; width: 800px; height: 400px; border: 2px dashed #f39c12; box-shadow: inset 0 0 20px rgba(243, 156, 18, 0.15); pointer-events: none; }
-        .boundary-line-left { position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: #2ecc71; box-shadow: 2px 0 10px rgba(46, 204, 113, 0.5); }
-        .boundary-line-bottom { position: absolute; top: 400px; left: 0; width: 100%; height: 4px; background-color: #e74c3c; box-shadow: 0 0 10px rgba(231, 76, 60, 0.8); }
-
-        .boundary-badge {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-            padding: 5px 12px;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            pointer-events: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .badge-origin { top: 12px; left: 12px; background: #2ecc71; color: #111; border: none; z-index: 10; }
-        .badge-camera { top: 12px; left: 550px; background: #f39c12; color: #111; border: none; }
-        .badge-left { top: 60px; left: 12px; border-left: 3px solid #2ecc71; }
-        .badge-bottom { top: 412px; left: 12px; background: #c0392b; color: white; border: none; }
-
-        /* Game Objects */
-        .game-object { position: absolute; background-size: 100% 100%; background-repeat: no-repeat; background-position: center; border: 1px solid transparent; cursor: move; z-index: 3; box-sizing: border-box; }
+        /* Objects & Handles */
+        .game-object { position: absolute; background-size: 100% 100%; background-position: center; border: 1px solid transparent; cursor: move; z-index: 3; }
         .game-object:hover { outline: 2px dashed #4ea8de; }
         .game-object.selected { outline: 2px solid #f1c40f !important; }
-        .delete-btn { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; background-color: #e74c3c; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.4); z-index: 20; }
+        .delete-btn { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; background: #e74c3c; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; z-index: 20; }
         .game-object:hover .delete-btn, .game-object.selected .delete-btn { display: flex; }
 
-        /* Resize Handles */
         .resize-handle { position: absolute; z-index: 10; display: none; }
         .game-object:hover .resize-handle, .game-object.selected .resize-handle { display: block; }
-
         .resize-handle.handle-t { top: -6px; left: 8px; right: 8px; height: 12px; cursor: ns-resize; }
         .resize-handle.handle-b { bottom: -6px; left: 8px; right: 8px; height: 12px; cursor: ns-resize; }
         .resize-handle.handle-l { left: -6px; top: 8px; bottom: 8px; width: 12px; cursor: ew-resize; }
         .resize-handle.handle-r { right: -6px; top: 8px; bottom: 8px; width: 12px; cursor: ew-resize; }
-
-        .resize-handle.handle-t:hover, .resize-handle.handle-b:hover { background: rgba(241, 196, 15, 0.35); border-top: 2px solid #f1c40f; border-bottom: 2px solid #f1c40f; }
-        .resize-handle.handle-l:hover, .resize-handle.handle-r:hover { background: rgba(241, 196, 15, 0.35); border-left: 2px solid #f1c40f; border-right: 2px solid #f1c40f; }
-
-        .resize-handle.handle-tl, .resize-handle.handle-tr, .resize-handle.handle-bl, .resize-handle.handle-br {
-            width: 10px; height: 10px; background-color: #f1c40f; border: 1px solid #111; border-radius: 2px; z-index: 15;
-        }
+        .resize-handle.handle-tl, .resize-handle.handle-tr, .resize-handle.handle-bl, .resize-handle.handle-br { width: 10px; height: 10px; background: #f1c40f; border: 1px solid #111; border-radius: 2px; z-index: 15; }
         .resize-handle.handle-tl { top: -5px; left: -5px; cursor: nwse-resize; }
         .resize-handle.handle-tr { top: -5px; right: -5px; cursor: nesw-resize; }
         .resize-handle.handle-bl { bottom: -5px; left: -5px; cursor: nesw-resize; }
         .resize-handle.handle-br { bottom: -5px; right: -5px; cursor: nwse-resize; }
 
-        .pipe-badge { position: absolute; top: 2px; left: 2px; background-color: rgba(0, 0, 0, 0.75); color: #2ecc71; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-family: monospace; pointer-events: none; }
+        .pipe-badge { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.75); color: #2ecc71; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-family: monospace; pointer-events: none; }
 
-        /* Modal Overlay */
-        #playtest-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); z-index: 9999; display: none; align-items: center; justify-content: center; }
-        #playtest-container { width: 90vw; height: 88vh; background: #1a252f; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; border: 2px solid #34495e; }
+        /* Modal */
+        #playtest-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; display: none; align-items: center; justify-content: center; }
+        #playtest-container { width: 90vw; height: 88vh; background: #1a252f; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 2px solid #34495e; }
         #playtest-header { background: #2c3e50; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #34495e; }
-        #playtest-header h4 { color: #2ecc71; margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-        .close-playtest-btn { background: #e74c3c; color: white; border: none; padding: 6px 14px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .close-playtest-btn:hover { background: #c0392b; }
+        #playtest-header h4 { color: #2ecc71; margin: 0; font-size: 16px; }
+        .close-playtest-btn { background: #e74c3c; color: white; border: none; padding: 6px 14px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         #playtest-iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
@@ -183,50 +108,17 @@
     <div id="main-container">
         <div id="sidebar">
             <h3>รายการวัตถุ (Objects)</h3>
-            <div id="dynamic-buttons">
-                <p style="font-size: 12px; color: #aaa;">กำลังโหลด data/objects.json...</p>
-            </div>
+            <div id="dynamic-buttons"><p style="font-size: 12px; color: #aaa;">กำลังโหลด data/objects.json...</p></div>
 
-            <!-- Inspector Panel -->
             <div id="inspector-panel">
                 <h3>คุณสมบัติวัตถุ</h3>
-                <div class="prop-group">
-                    <label for="inp-w">กว้าง (W):</label>
-                    <div class="input-unit">
-                        <input type="number" id="inp-w" min="1" step="10">
-                        <span>px</span>
-                    </div>
-                </div>
-                <div class="prop-group">
-                    <label for="inp-h">สูง (H):</label>
-                    <div class="input-unit">
-                        <input type="number" id="inp-h" min="1" step="10">
-                        <span>px</span>
-                    </div>
-                </div>
-                <div class="prop-group">
-                    <label for="inp-x">ตำแหน่ง X:</label>
-                    <div class="input-unit">
-                        <input type="number" id="inp-x" step="10">
-                        <span>px</span>
-                    </div>
-                </div>
-                <div class="prop-group">
-                    <label for="inp-y">ตำแหน่ง Y:</label>
-                    <div class="input-unit">
-                        <input type="number" id="inp-y" step="10">
-                        <span>px</span>
-                    </div>
-                </div>
-
-                <!-- Pipe Link Panel -->
+                <div class="prop-group"><label>กว้าง (W):</label><div class="input-unit"><input type="number" id="inp-w" min="1" step="10"><span>px</span></div></div>
+                <div class="prop-group"><label>สูง (H):</label><div class="input-unit"><input type="number" id="inp-h" min="1" step="10"><span>px</span></div></div>
+                <div class="prop-group"><label>ตำแหน่ง X:</label><div class="input-unit"><input type="number" id="inp-x" step="10"><span>px</span></div></div>
+                <div class="prop-group"><label>ตำแหน่ง Y:</label><div class="input-unit"><input type="number" id="inp-y" step="10"><span>px</span></div></div>
                 <div id="pipe-link-group" class="prop-group" style="display: none;">
-                    <label for="sel-target-pipe">มุดไปท่อ:</label>
-                    <div class="input-unit">
-                        <select id="sel-target-pipe">
-                            <option value="">-- ไม่วาร์ป --</option>
-                        </select>
-                    </div>
+                    <label>มุดไปท่อ:</label>
+                    <div class="input-unit"><select id="sel-target-pipe"><option value="">-- ไม่วาร์ป --</option></select></div>
                 </div>
             </div>
         </div>
@@ -237,13 +129,11 @@
                     <div class="camera-frame"></div>
                     <div class="boundary-line-left"></div>
                     <div class="boundary-line-bottom"></div>
-
                     <div class="boundary-badge badge-origin">🚩 จุดเริ่มด่าน (X: 0, Y: 0)</div>
                     <div class="boundary-badge badge-camera">📺 จอกล้องเกม (800 × 400px)</div>
                     <div class="boundary-badge badge-left">⬅️ ขอบซ้ายสุด (X: 0)</div>
                     <div class="boundary-badge badge-bottom">⚠️ ขอบล่างหน้าจอ / ตกแมพตาย (Y: 400)</div>
                 </div>
-
                 <svg id="svg-layer"></svg>
             </div>
 
@@ -267,522 +157,307 @@
     </div>
 
     <script>
-        const workspace = document.getElementById('workspace');
-        const canvas = document.getElementById('canvas');
-        const svgLayer = document.getElementById('svg-layer');
-        const dynamicButtonsContainer = document.getElementById('dynamic-buttons');
-        const zoomText = document.getElementById('zoom-text');
+        const $ = s => document.querySelector(s);
+        const $$ = s => document.querySelectorAll(s);
 
-        const inspectorPanel = document.getElementById('inspector-panel');
-        const inpW = document.getElementById('inp-w');
-        const inpH = document.getElementById('inp-h');
-        const inpX = document.getElementById('inp-x');
-        const inpY = document.getElementById('inp-y');
-        const pipeLinkGroup = document.getElementById('pipe-link-group');
-        const selTargetPipe = document.getElementById('sel-target-pipe');
+        let loadedObjectTypes = {}, pipeCounter = 1, selectedObj = null;
+        let scale = 1, viewX = 0, viewY = 0, isPanning = false, panStart = { x: 0, y: 0 };
+        const gridSize = 20, keys = {};
 
-        let currentlySelectedObj = null;
-        let loadedObjectTypes = {};
-        let pipeCounter = 1;
-        const gridSize = 20;
+        const svgToUrl = svg => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-        let scale = 1;
-        let viewX = 0;
-        let viewY = 0;
-        let isPanning = false;
-        let panStartX = 0;
-        let panStartY = 0;
-
-        const editorKeys = { up: false, down: false, left: false, right: false };
-        const keyboardPanSpeed = 10;
-
-        function svgToDataUrl(svgString) {
-            return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-        }
-
+        // โหลดปุ่มวัตถุ
         async function loadObjectsDefinition() {
             try {
-                const response = await fetch('data/objects.json');
-                loadedObjectTypes = await response.json();
-
-                dynamicButtonsContainer.innerHTML = '';
-
-                for (const [typeKey, objDef] of Object.entries(loadedObjectTypes)) {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-blue';
-
-                    if (objDef.svg) {
-                        const img = document.createElement('img');
-                        img.className = 'btn-icon';
-                        img.src = svgToDataUrl(objDef.svg);
-                        btn.appendChild(img);
-                    }
-
-                    const label = document.createElement('span');
-                    label.innerText = `+ ${objDef.name || typeKey}`;
-                    btn.appendChild(label);
-
-                    btn.onclick = () => createObject(typeKey);
-                    dynamicButtonsContainer.appendChild(btn);
-                }
-            } catch (err) {
-                console.error("ไม่สามารถโหลด data/objects.json ได้:", err);
-                dynamicButtonsContainer.innerHTML = '<p style="color:#e74c3c; font-size:12px;">❌ โหลด data/objects.json ไม่สำเร็จ</p>';
+                loadedObjectTypes = await (await fetch('data/objects.json')).json();
+                $('#dynamic-buttons').innerHTML = Object.entries(loadedObjectTypes).map(([type, def]) => `
+                    <button class="btn btn-blue" onclick="createObject('${type}')">
+                        ${def.svg ? `<img class="btn-icon" src="${svgToUrl(def.svg)}">` : ''}
+                        + ${def.name || type}
+                    </button>
+                `).join('');
+            } catch (e) {
+                $('#dynamic-buttons').innerHTML = '<p style="color:#e74c3c;font-size:12px;">❌ โหลด objects.json ไม่สำเร็จ</p>';
             }
         }
 
-        async function loadDefaultLevel() {
-            try {
-                const response = await fetch('data/level.json');
-                if (response.ok) {
-                    const levelData = await response.json();
-                    loadLevelData(levelData);
-                }
-            } catch (err) {
-                console.log("ไม่มีด่านเริ่มต้น หรือไม่พบ data/level.json");
-            }
-        }
-
-        function selectObject(obj) {
-            document.querySelectorAll('.game-object').forEach(o => o.classList.remove('selected'));
-            currentlySelectedObj = obj;
-
-            if (obj) {
-                obj.classList.add('selected');
-                inspectorPanel.style.display = 'block';
-
-                if (obj.dataset.type === 'pipe') {
-                    pipeLinkGroup.style.display = 'flex';
-                    populatePipeOptions();
-                } else {
-                    pipeLinkGroup.style.display = 'none';
-                }
-
-                updateInspectorValues();
-            } else {
-                inspectorPanel.style.display = 'none';
-            }
-        }
-
-        function populatePipeOptions() {
-            selTargetPipe.innerHTML = '<option value="">-- ไม่วาร์ป --</option>';
-            const pipes = document.querySelectorAll('.game-object[data-type="pipe"]');
-
-            pipes.forEach(pipe => {
-                if (currentlySelectedObj && pipe.dataset.pipeId !== currentlySelectedObj.dataset.pipeId) {
-                    const opt = document.createElement('option');
-                    opt.value = pipe.dataset.pipeId;
-                    opt.textContent = `ท่อ ${pipe.dataset.pipeId}`;
-                    selTargetPipe.appendChild(opt);
-                }
-            });
-
-            if (currentlySelectedObj && currentlySelectedObj.dataset.targetPipeId) {
-                selTargetPipe.value = currentlySelectedObj.dataset.targetPipeId;
-            }
-        }
-
-        selTargetPipe.addEventListener('change', () => {
-            if (!currentlySelectedObj || currentlySelectedObj.dataset.type !== 'pipe') return;
-            const target = selTargetPipe.value;
-            if (target) {
-                currentlySelectedObj.dataset.targetPipeId = target;
-            } else {
-                delete currentlySelectedObj.dataset.targetPipeId;
-            }
-            updatePipeLines();
-        });
-
-        function updateInspectorValues() {
-            if (!currentlySelectedObj) return;
-            inpW.value = parseInt(currentlySelectedObj.style.width) || 0;
-            inpH.value = parseInt(currentlySelectedObj.style.height) || 0;
-            inpX.value = parseInt(currentlySelectedObj.style.left) || 0;
-            inpY.value = parseInt(currentlySelectedObj.style.top) || 0;
-
-            if (currentlySelectedObj.dataset.type === 'pipe') {
-                selTargetPipe.value = currentlySelectedObj.dataset.targetPipeId || '';
-            }
-        }
-
-        inpW.addEventListener('input', () => {
-            if (!currentlySelectedObj) return;
-            let val = Math.max(1, parseInt(inpW.value) || 1);
-            currentlySelectedObj.style.width = val + 'px';
-            updatePipeLines();
-        });
-
-        inpH.addEventListener('input', () => {
-            if (!currentlySelectedObj) return;
-            let val = Math.max(1, parseInt(inpH.value) || 1);
-            currentlySelectedObj.style.height = val + 'px';
-            updatePipeLines();
-        });
-
-        inpX.addEventListener('input', () => {
-            if (!currentlySelectedObj) return;
-            let val = parseInt(inpX.value) || 0;
-            currentlySelectedObj.style.left = val + 'px';
-            updatePipeLines();
-        });
-
-        inpY.addEventListener('input', () => {
-            if (!currentlySelectedObj) return;
-            let val = parseInt(inpY.value) || 0;
-            currentlySelectedObj.style.top = val + 'px';
-            updatePipeLines();
-        });
-
+        // สร้างวัตถุบน Canvas
         function createObject(type, data = {}) {
-            // 🔹 ตรวจสอบป้องกันไม่ให้สร้าง player_start เกิน 1 อัน
-            if (type === 'player_start') {
-                const existingStarts = document.querySelectorAll('.game-object[data-type="player_start"]');
-                if (existingStarts.length >= 1) {
-                    alert('มีจุดเริ่มต้น (player_start) ในด่านแล้ว! ไม่สามารถสร้างเกิน 1 อันได้');
-                    return;
-                }
+            if (type === 'player_start' && $$('.game-object[data-type="player_start"]').length >= 1) {
+                return alert('มีจุดเริ่มต้น (player_start) ในด่านแล้ว! จำกัดไม่เกิน 1 อัน');
             }
 
-            const objDef = loadedObjectTypes[type];
+            const def = loadedObjectTypes[type] || {};
+            const rect = $('#workspace').getBoundingClientRect();
+            const defX = Math.round((-viewX + rect.width / 2) / scale / gridSize) * gridSize;
+            const defY = Math.round((-viewY + rect.height / 2) / scale / gridSize) * gridSize;
 
             const obj = document.createElement('div');
-            obj.classList.add('game-object', `type-${type}`);
+            obj.className = `game-object type-${type}`;
             obj.dataset.type = type;
+            if (def.svg) obj.style.backgroundImage = `url("${svgToUrl(def.svg)}")`;
 
-            if (objDef && objDef.svg) {
-                obj.style.backgroundImage = `url("${svgToDataUrl(objDef.svg)}")`;
-            } else {
-                obj.style.backgroundColor = '#95a5a6';
-            }
+            const w = data.w ?? (type === 'ground' ? 400 : type === 'pipe' ? 60 : 40);
+            const h = data.h ?? (type === 'ground' || type === 'pipe' ? 80 : 40);
 
-            const workspaceRect = workspace.getBoundingClientRect();
-            const defaultX = Math.round((-viewX + workspaceRect.width / 2) / scale / gridSize) * gridSize;
-            const defaultY = Math.round((-viewY + workspaceRect.height / 2) / scale / gridSize) * gridSize;
+            Object.assign(obj.style, { left: (data.x ?? defX) + 'px', top: (data.y ?? defY) + 'px', width: w + 'px', height: h + 'px' });
 
-            obj.style.left = (data.x ?? defaultX) + 'px';
-            obj.style.top = (data.y ?? defaultY) + 'px';
-
-            if (type === 'ground') {
-                obj.style.width = (data.w ?? 400) + 'px';
-                obj.style.height = (data.h ?? 80) + 'px';
-            } else if (type === 'pipe') {
-                const pipeId = data.pipeId || `pipe_${pipeCounter++}`;
-                obj.dataset.pipeId = pipeId;
+            if (type === 'pipe') {
+                obj.dataset.pipeId = data.pipeId || `pipe_${pipeCounter++}`;
                 if (data.targetPipeId) obj.dataset.targetPipeId = data.targetPipeId;
-                obj.style.width = (data.w ?? 60) + 'px';
-                obj.style.height = (data.h ?? 80) + 'px';
-                obj.innerHTML = `<div class="pipe-badge">${pipeId}</div>`;
-            } else {
-                obj.style.width = (data.w ?? 40) + 'px';
-                obj.style.height = (data.h ?? (type === 'cloud' || type === 'sun' ? 40 : (data.w ?? 40))) + 'px';
+                obj.innerHTML = `<div class="pipe-badge">${obj.dataset.pipeId}</div>`;
             }
 
             const delBtn = document.createElement('div');
-            delBtn.classList.add('delete-btn');
-            delBtn.innerText = '✕';
-            delBtn.addEventListener('click', (e) => {
+            delBtn.className = 'delete-btn';
+            delBtn.textContent = '✕';
+            delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (currentlySelectedObj === obj) selectObject(null);
+                if (selectedObj === obj) selectObject(null);
                 obj.remove();
                 updatePipeLines();
-            });
+            };
             obj.appendChild(delBtn);
 
-            const handleDirections = ['tl', 't', 'tr', 'r', 'br', 'b', 'bl', 'l'];
-            handleDirections.forEach(dir => {
+            ['tl','t','tr','r','br','b','bl','l'].forEach(dir => {
                 const handle = document.createElement('div');
-                handle.classList.add('resize-handle', `handle-${dir}`);
+                handle.className = `resize-handle handle-${dir}`;
                 obj.appendChild(handle);
             });
 
-            canvas.appendChild(obj);
-
+            $('#canvas').appendChild(obj);
             attachPointerEvents(obj);
             selectObject(obj);
             updatePipeLines();
         }
 
+        // ระบบ ลาก / ย่อ-ขยาย วัตถุ
         function attachPointerEvents(obj) {
-            let mode = 'none';
-            let startX, startY, startLeft, startTop, startW, startH;
+            let mode = 'none', start = {};
 
-            obj.addEventListener('pointerdown', (e) => {
+            obj.onpointerdown = e => {
                 if (e.target.classList.contains('delete-btn')) return;
-
-                if (e.target.classList.contains('resize-handle')) {
-                    const match = e.target.className.match(/handle-([a-z]+)/);
-                    if (match) mode = 'resize-' + match[1];
-                } else {
-                    mode = 'drag';
-                }
-
                 e.stopPropagation();
-                startX = e.clientX;
-                startY = e.clientY;
-                startLeft = parseInt(obj.style.left) || 0;
-                startTop = parseInt(obj.style.top) || 0;
-                startW = parseInt(obj.style.width) || 40;
-                startH = parseInt(obj.style.height) || 40;
+
+                const handleMatch = e.target.className.match(/handle-([a-z]+)/);
+                mode = handleMatch ? 'resize-' + handleMatch[1] : 'drag';
+
+                start = {
+                    x: e.clientX, y: e.clientY,
+                    l: parseInt(obj.style.left) || 0, t: parseInt(obj.style.top) || 0,
+                    w: parseInt(obj.style.width) || 40, h: parseInt(obj.style.height) || 40
+                };
 
                 selectObject(obj);
 
-                window.addEventListener('pointermove', onPointerMove);
-                window.addEventListener('pointerup', onPointerUp);
-            });
+                const move = me => {
+                    const dx = (me.clientX - start.x) / scale, dy = (me.clientY - start.y) / scale;
 
-            function onPointerMove(e) {
-                const dx = (e.clientX - startX) / scale;
-                const dy = (e.clientY - startY) / scale;
+                    if (mode === 'drag') {
+                        obj.style.left = Math.round((start.l + dx) / gridSize) * gridSize + 'px';
+                        obj.style.top = Math.round((start.t + dy) / gridSize) * gridSize + 'px';
+                    } else if (mode.startsWith('resize-')) {
+                        const dir = mode.replace('resize-', '');
+                        let { w, h, l, t } = start;
 
-                if (mode === 'drag') {
-                    let newX = Math.round((startLeft + dx) / gridSize) * gridSize;
-                    let newY = Math.round((startTop + dy) / gridSize) * gridSize;
-                    obj.style.left = newX + 'px';
-                    obj.style.top = newY + 'px';
-                    updatePipeLines();
-                } 
-                else if (mode.startsWith('resize-')) {
-                    const dir = mode.replace('resize-', '');
-                    let newW = startW, newH = startH, newX = startLeft, newY = startTop;
+                        if (dir.includes('r')) w = Math.max(gridSize, Math.round((start.w + dx) / gridSize) * gridSize);
+                        if (dir.includes('l')) { w = Math.max(gridSize, Math.round((start.w - dx) / gridSize) * gridSize); l = start.l + (start.w - w); }
+                        if (dir.includes('b')) h = Math.max(gridSize, Math.round((start.h + dy) / gridSize) * gridSize);
+                        if (dir.includes('t')) { h = Math.max(gridSize, Math.round((start.h - dy) / gridSize) * gridSize); t = start.t + (start.h - h); }
 
-                    if (dir.includes('r')) newW = Math.max(gridSize, Math.round((startW + dx) / gridSize) * gridSize);
-                    else if (dir.includes('l')) {
-                        newW = Math.max(gridSize, Math.round((startW - dx) / gridSize) * gridSize);
-                        newX = startLeft + (startW - newW);
+                        Object.assign(obj.style, { width: w + 'px', height: h + 'px', left: l + 'px', top: t + 'px' });
                     }
 
-                    if (dir.includes('b')) newH = Math.max(gridSize, Math.round((startH + dy) / gridSize) * gridSize);
-                    else if (dir.includes('t')) {
-                        newH = Math.max(gridSize, Math.round((startH - dy) / gridSize) * gridSize);
-                        newY = startTop + (startH - newH);
-                    }
-
-                    obj.style.width = newW + 'px';
-                    obj.style.height = newH + 'px';
-                    obj.style.left = newX + 'px';
-                    obj.style.top = newY + 'px';
+                    updateInspectorValues();
                     updatePipeLines();
-                }
+                };
 
+                const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+                window.addEventListener('pointermove', move);
+                window.addEventListener('pointerup', up);
+            };
+        }
+
+        // ระบบเลือกวัตถุ & Inspector
+        function selectObject(obj) {
+            $$('.game-object').forEach(o => o.classList.remove('selected'));
+            selectedObj = obj;
+
+            if (obj) {
+                obj.classList.add('selected');
+                $('#inspector-panel').style.display = 'block';
+                $('#pipe-link-group').style.display = obj.dataset.type === 'pipe' ? 'flex' : 'none';
+                if (obj.dataset.type === 'pipe') populatePipeOptions();
                 updateInspectorValues();
-            }
-
-            function onPointerUp() {
-                mode = 'none';
-                window.removeEventListener('pointermove', onPointerMove);
-                window.removeEventListener('pointerup', onPointerUp);
+            } else {
+                $('#inspector-panel').style.display = 'none';
             }
         }
 
+        function populatePipeOptions() {
+            const sel = $('#sel-target-pipe');
+            sel.innerHTML = '<option value="">-- ไม่วาร์ป --</option>';
+            $$('.game-object[data-type="pipe"]').forEach(p => {
+                if (selectedObj && p.dataset.pipeId !== selectedObj.dataset.pipeId) {
+                    sel.innerHTML += `<option value="${p.dataset.pipeId}">ท่อ ${p.dataset.pipeId}</option>`;
+                }
+            });
+            sel.value = selectedObj?.dataset.targetPipeId || '';
+        }
+
+        $('#sel-target-pipe').onchange = e => {
+            if (!selectedObj || selectedObj.dataset.type !== 'pipe') return;
+            if (e.target.value) selectedObj.dataset.targetPipeId = e.target.value;
+            else delete selectedObj.dataset.targetPipeId;
+            updatePipeLines();
+        };
+
+        function updateInspectorValues() {
+            if (!selectedObj) return;
+            $('#inp-w').value = parseInt(selectedObj.style.width) || 0;
+            $('#inp-h').value = parseInt(selectedObj.style.height) || 0;
+            $('#inp-x').value = parseInt(selectedObj.style.left) || 0;
+            $('#inp-y').value = parseInt(selectedObj.style.top) || 0;
+        }
+
+        ['w','h','x','y'].forEach(p => {
+            $(`#inp-${p}`).oninput = e => {
+                if (!selectedObj) return;
+                const val = parseInt(e.target.value) || 0;
+                if (p === 'w') selectedObj.style.width = Math.max(1, val) + 'px';
+                if (p === 'h') selectedObj.style.height = Math.max(1, val) + 'px';
+                if (p === 'x') selectedObj.style.left = val + 'px';
+                if (p === 'y') selectedObj.style.top = val + 'px';
+                updatePipeLines();
+            };
+        });
+
+        // เส้นเชื่อมวาร์ปท่อ
         function updatePipeLines() {
-            svgLayer.innerHTML = '';
-            const pipes = document.querySelectorAll('.game-object[data-type="pipe"]');
+            const svg = $('#svg-layer');
+            svg.innerHTML = '';
+            $$('.game-object[data-type="pipe"]').forEach(p => {
+                const targetId = p.dataset.targetPipeId;
+                const target = targetId && $(`.game-object[data-pipe-id="${targetId}"]`);
+                if (target) {
+                    const x1 = parseInt(p.style.left) + parseInt(p.style.width) / 2;
+                    const y1 = parseInt(p.style.top) + parseInt(p.style.height) / 2;
+                    const x2 = parseInt(target.style.left) + parseInt(target.style.width) / 2;
+                    const y2 = parseInt(target.style.top) + parseInt(target.style.height) / 2;
 
-            pipes.forEach(pipe => {
-                const targetId = pipe.dataset.targetPipeId;
-                if (targetId) {
-                    const targetPipe = document.querySelector(`.game-object[data-pipe-id="${targetId}"]`);
-                    if (targetPipe) {
-                        const x1 = parseInt(pipe.style.left) + parseInt(pipe.style.width) / 2;
-                        const y1 = parseInt(pipe.style.top) + parseInt(pipe.style.height) / 2;
-                        const x2 = parseInt(targetPipe.style.left) + parseInt(targetPipe.style.width) / 2;
-                        const y2 = parseInt(targetPipe.style.top) + parseInt(targetPipe.style.height) / 2;
-
-                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        line.setAttribute('x1', x1);
-                        line.setAttribute('y1', y1);
-                        line.setAttribute('x2', x2);
-                        line.setAttribute('y2', y2);
-                        line.setAttribute('stroke', '#2ecc71');
-                        line.setAttribute('stroke-width', '3');
-                        line.setAttribute('stroke-dasharray', '6');
-                        svgLayer.appendChild(line);
-                    }
+                    svg.innerHTML += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2ecc71" stroke-width="3" stroke-dasharray="6"/>`;
                 }
             });
         }
 
-        workspace.addEventListener('pointerdown', (e) => {
-            if (e.target === workspace || e.target === canvas || e.target === svgLayer) {
+        // การ Pan & Zoom พื้นที่ทำงาน
+        const workspace = $('#workspace');
+        workspace.onpointerdown = e => {
+            if (e.target === workspace || e.target === $('#canvas') || e.target === $('#svg-layer')) {
                 isPanning = true;
-                panStartX = e.clientX - viewX;
-                panStartY = e.clientY - viewY;
+                panStart = { x: e.clientX - viewX, y: e.clientY - viewY };
                 selectObject(null);
             }
-        });
+        };
+        window.onpointermove = e => {
+            if (isPanning) { viewX = e.clientX - panStart.x; viewY = e.clientY - panStart.y; updateTransform(); }
+        };
+        window.onpointerup = () => isPanning = false;
 
-        window.addEventListener('pointermove', (e) => {
-            if (isPanning) {
-                viewX = e.clientX - panStartX;
-                viewY = e.clientY - panStartY;
-                updateTransform();
-            }
-        });
-
-        window.addEventListener('pointerup', () => isPanning = false);
-
-        workspace.addEventListener('wheel', (e) => {
+        workspace.onwheel = e => {
             e.preventDefault();
             const delta = -e.deltaY * 0.0015;
             const newScale = Math.min(Math.max(0.2, scale + delta), 2.5);
-
             const rect = workspace.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
 
-            const worldX = (mouseX - viewX) / scale;
-            const worldY = (mouseY - viewY) / scale;
-
+            viewX = mx - (mx - viewX) / scale * newScale;
+            viewY = my - (my - viewY) / scale * newScale;
             scale = newScale;
-            viewX = mouseX - worldX * scale;
-            viewY = mouseY - worldY * scale;
-
             updateTransform();
-        }, { passive: false });
+        };
 
-        function changeZoom(delta) {
-            scale = Math.min(Math.max(0.2, scale + delta), 2.5);
-            updateTransform();
-        }
-
-        function resetZoom() {
-            scale = 1; viewX = 0; viewY = 0; updateTransform();
-        }
-
+        function changeZoom(d) { scale = Math.min(Math.max(0.2, scale + d), 2.5); updateTransform(); }
+        function resetZoom() { scale = 1; viewX = viewY = 0; updateTransform(); }
         function updateTransform() {
-            canvas.style.transform = `translate(${viewX}px, ${viewY}px) scale(${scale})`;
-            zoomText.innerText = Math.round(scale * 100) + '%';
+            $('#canvas').style.transform = `translate(${viewX}px, ${viewY}px) scale(${scale})`;
+            $('#zoom-text').innerText = Math.round(scale * 100) + '%';
         }
 
-        window.addEventListener('keydown', (e) => {
-            const modal = document.getElementById('playtest-modal');
-            if (modal && modal.style.display === 'flex') return;
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-
-            if (e.code === 'KeyW' || e.code === 'ArrowUp') editorKeys.up = true;
-            if (e.code === 'KeyS' || e.code === 'ArrowDown') editorKeys.down = true;
-            if (e.code === 'KeyA' || e.code === 'ArrowLeft') editorKeys.left = true;
-            if (e.code === 'KeyD' || e.code === 'ArrowRight') editorKeys.right = true;
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW' || e.code === 'ArrowUp') editorKeys.up = false;
-            if (e.code === 'KeyS' || e.code === 'ArrowDown') editorKeys.down = false;
-            if (e.code === 'KeyA' || e.code === 'ArrowLeft') editorKeys.left = false;
-            if (e.code === 'KeyD' || e.code === 'ArrowRight') editorKeys.right = false;
-        });
+        // คีย์บอร์ดเลื่อนกล้อง
+        window.onkeydown = window.onkeyup = e => {
+            if ($('#playtest-modal').style.display === 'flex' || ['INPUT','SELECT'].includes(document.activeElement.tagName)) return;
+            const kMap = { KeyW:'up', ArrowUp:'up', KeyS:'down', ArrowDown:'down', KeyA:'left', ArrowLeft:'left', KeyD:'right', ArrowRight:'right' };
+            if (kMap[e.code]) keys[kMap[e.code]] = e.type === 'keydown';
+            if (e.key === 'Escape') closePlaytest();
+        };
 
         function editorLoop() {
-            let moved = false;
-            if (editorKeys.up) { viewY += keyboardPanSpeed; moved = true; }
-            if (editorKeys.down) { viewY -= keyboardPanSpeed; moved = true; }
-            if (editorKeys.left) { viewX += keyboardPanSpeed; moved = true; }
-            if (editorKeys.right) { viewX -= keyboardPanSpeed; moved = true; }
-
-            if (moved) updateTransform();
+            if (keys.up) viewY += 10;
+            if (keys.down) viewY -= 10;
+            if (keys.left) viewX += 10;
+            if (keys.right) viewX -= 10;
+            if (keys.up || keys.down || keys.left || keys.right) updateTransform();
             requestAnimationFrame(editorLoop);
         }
 
-        function startPlaytest() {
-            const objects = document.querySelectorAll('.game-object');
-            const levelData = [];
-
-            objects.forEach(obj => {
-                const type = obj.dataset.type;
+        // Import / Export & Playtest Modal
+        function getLevelData() {
+            return Array.from($$('.game-object')).map(obj => {
                 const data = {
-                    type: type,
-                    x: parseInt(obj.style.left) || 0,
-                    y: parseInt(obj.style.top) || 0,
-                    w: parseInt(obj.style.width) || 40,
-                    h: parseInt(obj.style.height) || 40
+                    type: obj.dataset.type,
+                    x: parseInt(obj.style.left), y: parseInt(obj.style.top),
+                    w: parseInt(obj.style.width), h: parseInt(obj.style.height)
                 };
-
-                if (type === 'pipe') {
+                if (obj.dataset.type === 'pipe') {
                     data.pipeId = obj.dataset.pipeId;
                     if (obj.dataset.targetPipeId) data.targetPipeId = obj.dataset.targetPipeId;
                 }
-                levelData.push(data);
+                return data;
             });
-
-            window.tempLevelData = levelData;
-
-            const modal = document.getElementById('playtest-modal');
-            const iframe = document.getElementById('playtest-iframe');
-
-            iframe.src = 'index.html?t=' + Date.now();
-            modal.style.display = 'flex';
-
-            setTimeout(() => {
-                if (iframe.contentWindow) iframe.contentWindow.focus();
-            }, 100);
         }
-
-        function closePlaytest() {
-            const modal = document.getElementById('playtest-modal');
-            const iframe = document.getElementById('playtest-iframe');
-            modal.style.display = 'none';
-            iframe.src = 'about:blank';
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closePlaytest();
-        });
 
         function loadLevelData(data) {
             selectObject(null);
-            document.querySelectorAll('.game-object').forEach(el => el.remove());
-            data.forEach(item => createObject(item.type, item));
+            $$('.game-object').forEach(el => el.remove());
+            data.forEach(i => createObject(i.type, i));
+        }
+
+        function startPlaytest() {
+            window.tempLevelData = getLevelData();
+            $('#playtest-iframe').src = 'index.html?t=' + Date.now();
+            $('#playtest-modal').style.display = 'flex';
+            setTimeout(() => $('#playtest-iframe').contentWindow?.focus(), 100);
+        }
+
+        function closePlaytest() {
+            $('#playtest-modal').style.display = 'none';
+            $('#playtest-iframe').src = 'about:blank';
         }
 
         function exportJSON() {
-            const objects = document.querySelectorAll('.game-object');
-            const levelData = [];
-
-            objects.forEach(obj => {
-                const type = obj.dataset.type;
-                const data = {
-                    type: type,
-                    x: parseInt(obj.style.left),
-                    y: parseInt(obj.style.top),
-                    w: parseInt(obj.style.width),
-                    h: parseInt(obj.style.height)
-                };
-
-                if (type === 'pipe') {
-                    data.pipeId = obj.dataset.pipeId;
-                    if (obj.dataset.targetPipeId) data.targetPipeId = obj.dataset.targetPipeId;
-                }
-                levelData.push(data);
-            });
-
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(levelData, null, 2));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", "level.json");
-            dlAnchorElem.click();
+            const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getLevelData(), null, 2));
+            const a = document.createElement('a');
+            a.href = str; a.download = "level.json"; a.click();
         }
 
-        function importJSON() { document.getElementById('file-input').click(); }
-
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
+        function importJSON() { $('#file-input').click(); }
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    loadLevelData(data);
-                } catch (err) {
-                    alert("ไฟล์ JSON ไม่ถูกต้อง!");
-                }
+            reader.onload = ev => {
+                try { loadLevelData(JSON.parse(ev.target.result)); } catch (err) { alert("ไฟล์ JSON ไม่ถูกต้อง!"); }
             };
             reader.readAsText(file);
         }
 
         async function initEditor() {
             await loadObjectsDefinition();
-            await loadDefaultLevel();
+            try {
+                const res = await fetch('data/level.json');
+                if (res.ok) loadLevelData(await res.json());
+            } catch (e) {}
             requestAnimationFrame(editorLoop);
         }
 

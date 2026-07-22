@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>2D Auto-Runner Game - Manifest Level Loader</title>
+    <title>2D Game - Multi-Controller Mode</title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -14,14 +14,37 @@
     <canvas id="gameCanvas" width="800" height="400"></canvas>
 
     <script>
+        // ==========================================
+        // 🛠️ 1. GAME CONFIGURATION (ตั้งค่าโหมดการเล่น)
+        // ==========================================
+        // ตรวจจับ mode จาก URL Query string เช่น index.html?mode=manual
+        // หากไม่มีจะดึงค่าตั้งต้น 'AUTO' หรือ 'MANUAL'
+        const urlParams = new URLSearchParams(window.location.search);
+        const GAME_CONFIG = {
+            mode: urlParams.get('mode')?.toUpperCase() || 'AUTO' // เลือก: 'AUTO' หรือ 'MANUAL'
+        };
+
         const canvas = document.getElementById("gameCanvas"), ctx = canvas.getContext("2d");
         let manifest = [], currentLevelIdx = 0, level = [];
         let objs = {}, chars = {}, spawn = { x: 50, y: 100 }, cameraX = 0;
         let levelCleared = false, gameCleared = false;
 
-        const keys = { up: 0, down: 0 };
-        const keyMap = { ArrowUp:'up', KeyW:'up', Space:'up', ArrowDown:'down', KeyS:'down' };
-        window.onkeydown = window.onkeyup = e => keyMap[e.code] && (keys[keyMap[e.code]] = e.type === 'keydown' ? 1 : 0);
+        // ==========================================
+        // 🎮 2. KEYBOARD MAPPING (รองรับเดินซ้าย-ขวา)
+        // ==========================================
+        const keys = { up: 0, down: 0, left: 0, right: 0 };
+        const keyMap = { 
+            ArrowUp: 'up', KeyW: 'up', Space: 'up', 
+            ArrowDown: 'down', KeyS: 'down',
+            ArrowLeft: 'left', KeyA: 'left',
+            ArrowRight: 'right', KeyD: 'right'
+        };
+
+        window.onkeydown = window.onkeyup = e => {
+            if (keyMap[e.code]) {
+                keys[keyMap[e.code]] = e.type === 'keydown' ? 1 : 0;
+            }
+        };
 
         const p = {
             x: 50, y: 100, w: 40, h: 50, normH: 50, crouchH: 25,
@@ -36,7 +59,7 @@
         const isSolid = inst => objs[inst.type]?.solid;
         const resetPlayer = () => Object.assign(p, { x: spawn.x, y: spawn.y, vx: 0, vy: 0, crouching: false, h: p.normH });
 
-        // โหลดข้อมูลเกมและดาวน์โหลด Manifest JSON
+        // โหลดข้อมูล
         async function loadGameData() {
             try {
                 const [oRes, cRes] = await Promise.all([fetch('data/objects.json'), fetch('data/characters.json')]);
@@ -44,7 +67,6 @@
                 Object.entries(oData).forEach(([k, v]) => objs[k] = { ...v, solid: v.solid ?? true, img: svgToImg(v.svg) });
                 cData.characters.forEach(c => chars[c.id] = { name: c.name, norm: svgToImg(c.svgNormal), crouch: svgToImg(c.svgCrouch) });
 
-                // กรณี Playtest จาก Editor
                 if (window.parent?.tempManifest) {
                     manifest = window.parent.tempManifest;
                     currentLevelIdx = window.parent.tempCurrentIdx || 0;
@@ -54,7 +76,6 @@
                         return;
                     }
                 } else {
-                    // ดาวน์โหลด Manifest JSON ปกติ
                     const mRes = await fetch('data/levels_manifest.json');
                     manifest = await mRes.json();
                 }
@@ -65,11 +86,7 @@
         }
 
         async function loadLevelByManifestIndex(idx) {
-            if (idx >= manifest.length) {
-                gameCleared = true;
-                return;
-            }
-
+            if (idx >= manifest.length) { gameCleared = true; return; }
             currentLevelIdx = idx;
             levelCleared = false;
             gameCleared = false;
@@ -80,7 +97,6 @@
                 const levelData = await res.json();
                 setupLevelObjects(levelData);
             } catch (err) {
-                console.warn(`โหลดไฟล์ด่าน ${targetFile} ไม่สำเร็จ - ใช้ด่านว่าง`);
                 setupLevelObjects([]);
             }
         }
@@ -93,20 +109,15 @@
             resetPlayer();
         }
 
-        // ระบบเมื่อเข้าเส้นชัย
         function triggerNextLevel() {
             if (levelCleared) return;
             levelCleared = true;
 
-            // 🎯 ปิดหน้าต่าง Playtest อัตโนมัติเมื่ออยู่ใน Editor
             if (window.parent && typeof window.parent.closePlaytest === 'function' && window.parent.tempManifest) {
-                setTimeout(() => {
-                    window.parent.closePlaytest();
-                }, 800);
+                setTimeout(() => window.parent.closePlaytest(), 800);
                 return;
             }
 
-            // โหมดเล่นเกมปกติ
             setTimeout(async () => {
                 if (currentLevelIdx + 1 < manifest.length) {
                     await loadLevelByManifestIndex(currentLevelIdx + 1);
@@ -132,9 +143,35 @@
             }
         }
 
+        // ==========================================
+        // 🕹️ 3. CONTROLLER STRATEGIES (แยกระบบเคลื่อนที่)
+        // ==========================================
+        
+        // 3.1 โหมดวิ่งเองอัตโนมัติ (Auto-Runner)
+        function updateAutoRunnerMovement() {
+            p.vx = p.crouching ? p.crouchSpeed : p.speed;
+        }
+
+        // 3.2 โหมดควบคุมเองอิสระ (Manual Control)
+        function updateManualMovement() {
+            const moveSpeed = p.crouching ? p.crouchSpeed : p.speed;
+            
+            if (keys.left) {
+                p.vx = -moveSpeed;
+            } else if (keys.right) {
+                p.vx = moveSpeed;
+            } else {
+                p.vx = 0; // หยุดเมื่อไม่กดปุ่ม
+            }
+        }
+
+        // ==========================================
+        // 🔄 4. GAME UPDATE LOOP
+        // ==========================================
         function update() {
             if (gameCleared || levelCleared) return;
 
+            // การย้ายผ่านท่อ
             if (p.pipe.active) {
                 if (p.pipe.state === 'entering') {
                     p.y += 2;
@@ -156,6 +193,7 @@
 
             checkPipe();
 
+            // การก้มตัว (Crouch)
             const hDiff = p.normH - p.crouchH;
             if (keys.down && p.grounded) {
                 if (!p.crouching) { p.crouching = true; p.y += hDiff; p.h = p.crouchH; }
@@ -163,17 +201,29 @@
                 p.crouching = false; p.y -= hDiff; p.h = p.normH;
             }
 
-            p.vx = p.crouching ? p.crouchSpeed : p.speed;
+            // 🎯 เลือกเรียกใช้ระบบตาม GAME_CONFIG
+            if (GAME_CONFIG.mode === 'MANUAL') {
+                updateManualMovement();
+            } else {
+                updateAutoRunnerMovement();
+            }
+
+            // คำนวณตำแหน่งพิกัด X
             p.x += p.vx;
 
+            // ตรวจสอบการชนกับบล็อกแนวนอน & เส้นชัย
             level.forEach(i => {
                 if ((i.type === 'goal' || i.type === 'flag') && collide(p, i)) triggerNextLevel();
-                if (isSolid(i) && collide(p, i)) p.x = i.x - p.w;
+                if (isSolid(i) && collide(p, i)) {
+                    if (p.vx > 0) p.x = i.x - p.w;
+                    else if (p.vx < 0) p.x = i.x + (i.w ?? i.h);
+                }
             });
 
             if (p.x >= 4950) triggerNextLevel();
             p.x = Math.max(0, Math.min(5000 - p.w, p.x));
 
+            // การกระโดด และแรงโน้มถ่วง (Physics Y)
             if (keys.up && p.grounded) { p.vy = p.jump; p.grounded = false; }
             p.vy += 0.6;
             p.y += p.vy;
@@ -190,6 +240,9 @@
             cameraX = Math.max(0, Math.min(5000 - canvas.width, p.x + p.w / 2 - canvas.width / 2));
         }
 
+        // ==========================================
+        // 🎨 5. RENDER LOOP
+        // ==========================================
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
@@ -210,8 +263,8 @@
 
             const currentLevelName = manifest[currentLevelIdx]?.name || `ด่านที่ ${currentLevelIdx + 1}`;
             ctx.fillStyle = "black";
-            ctx.font = "bold 16px sans-serif";
-            ctx.fillText(`ด่าน: ${currentLevelName} (${currentLevelIdx + 1}/${manifest.length}) | X: ${Math.floor(p.x)}`, 10, 25);
+            ctx.font = "bold 15px sans-serif";
+            ctx.fillText(`ด่าน: ${currentLevelName} (${currentLevelIdx + 1}/${manifest.length}) | โหมด: ${GAME_CONFIG.mode} \vert{} X:${Math.floor(p.x)}`, 10, 25);
 
             if (levelCleared) {
                 ctx.fillStyle = "rgba(0,0,0,0.6)";

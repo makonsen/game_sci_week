@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>2D Side-Scroller Game</title>
+    <title>2D Auto-Runner Game</title>
     <style>
         * {
             box-sizing: border-box;
@@ -40,6 +40,10 @@
         const loadedObjectTypes = {};
         const loadedCharacters = {};
 
+        // พิกัดจุดเกิดของผู้เล่น
+        let spawnX = 50;
+        let spawnY = 100;
+
         function svgToImage(svgString) {
             const img = new Image();
             const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -61,6 +65,18 @@
                     const levelRes = await fetch('data/level.json');
                     levelInstances = await levelRes.json();
                 }
+
+                // 🔹 ดึงจุดเริ่มต้น (player_start) มากำหนดเป็นตำแหน่งเกิดตัวละคร
+                const startObjs = levelInstances.filter(item => item.type === 'player_start');
+                if (startObjs.length > 0) {
+                    spawnX = startObjs[0].x;
+                    spawnY = startObjs[0].y;
+                    player.x = spawnX;
+                    player.y = spawnY;
+                }
+
+                // 🔹 ลบ player_start ออกจาก levelInstances ทั้งหมด ไม่ให้แสดงผลในเกม
+                levelInstances = levelInstances.filter(item => item.type !== 'player_start');
 
                 const objectsData = await objectsRes.json();
                 const charsData = await charsRes.json();
@@ -92,23 +108,23 @@
         const gravity = 0.6;
         let cameraX = 0;
 
-        const keys = { left: false, right: false, up: false, down: false };
+        const keys = { up: false, down: false };
 
         const player = {
-            x: 50,
-            y: 100,
+            x: spawnX,
+            y: spawnY,
             normalHeight: 50,
             crouchHeight: 25,
             width: 40,
             height: 50,
             vx: 0,
             vy: 0,
-            speed: 5,
-            crouchSpeed: 2.5,
+            speed: 5,         // ความเร็ววิ่งปกติ
+            crouchSpeed: 3,   // ความเร็วขณะย่อตัว
             jumpForce: -12,
             isGrounded: false,
             isCrouching: false,
-            // 🔹 สถานะมุดท่อ
+            // สถานะมุดท่อ
             isPipeTraversing: false,
             pipeState: 'none', // 'entering' | 'exiting'
             pipeTarget: null,
@@ -117,15 +133,11 @@
         };
 
         window.addEventListener("keydown", (e) => {
-            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
-            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
             if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") keys.up = true;
             if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = true;
         });
 
         window.addEventListener("keyup", (e) => {
-            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
-            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
             if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") keys.up = false;
             if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
         });
@@ -138,7 +150,6 @@
                 rect1.y + rect1.height > instance.y;
         }
 
-        // 🔹 ฟังก์ชันตรวจสอบว่ายืนขึ้นได้หรือไม่ (Crouch Lock)
         function canStandUp() {
             const heightDiff = player.normalHeight - player.crouchHeight;
             const standingBox = {
@@ -157,7 +168,6 @@
             return true;
         }
 
-        // 🔹 ฟังก์ชันตรวจสอบการเริ่มมุดท่อ
         function checkPipeEnter() {
             if (!keys.down || !player.isGrounded || player.isPipeTraversing) return;
 
@@ -166,7 +176,6 @@
                     const playerCenterX = player.x + (player.width / 2);
                     const pipeCenterX = instance.x + (instance.w / 2);
 
-                    // ยืนอยู่บนปากท่อและตำแหน่ง X ตรงกันโดยประมาณ
                     const isOnTop = Math.abs(playerCenterX - pipeCenterX) < 20 &&
                                     Math.abs((player.y + player.height) - instance.y) < 5;
 
@@ -186,14 +195,21 @@
             }
         }
 
+        function resetPlayer() {
+            player.x = spawnX;
+            player.y = spawnY;
+            player.vx = 0;
+            player.vy = 0;
+            player.isCrouching = false;
+            player.height = player.normalHeight;
+        }
+
         // 3. ระบบคำนวณการเคลื่อนที่และการชน
         function update() {
-            // 🔹 1. ระบบ Animation ขณะมุด/ออกท่อ
             if (player.isPipeTraversing) {
                 if (player.pipeState === 'entering') {
                     player.y += player.pipeSpeed;
                     if (player.y >= player.y + player.height || player.y > player.pipeTarget.y) {
-                        // วาร์ปไปที่ท่อปลายทาง
                         player.x = player.pipeTarget.x + (player.pipeTarget.w / 2) - (player.width / 2);
                         player.y = player.pipeTarget.y + player.pipeTarget.h;
                         player.pipeState = 'exiting';
@@ -208,13 +224,11 @@
                         player.isGrounded = true;
                     }
                 }
-                return; // ขณะมุดท่อให้ข้ามฟิสิกส์ปกติ
+                return;
             }
 
-            // 🔹 2. เช็คการมุดท่อ
             checkPipeEnter();
 
-            // 🔹 3. ระบบย่อตัว / ยืนขึ้นอัตโนมัติ (Crouch Lock)
             const heightDiff = player.normalHeight - player.crouchHeight;
             if (keys.down && player.isGrounded) {
                 if (!player.isCrouching) {
@@ -230,27 +244,22 @@
                 }
             }
 
-            // เดิน X
+            // Auto-Run
             const currentSpeed = player.isCrouching ? player.crouchSpeed : player.speed;
-            if (keys.left) player.vx = -currentSpeed;
-            else if (keys.right) player.vx = currentSpeed;
-            else player.vx = 0;
+            player.vx = currentSpeed;
 
             player.x += player.vx;
 
-            // ตรวจจับการชนแกน X
             for (let instance of levelInstances) {
                 const typeDef = loadedObjectTypes[instance.type];
                 if (typeDef && typeDef.solid && isColliding(player, instance)) {
                     if (player.vx > 0) player.x = instance.x - player.width;
-                    else if (player.vx < 0) player.x = instance.x + instance.w;
                 }
             }
 
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > worldWidth) player.x = worldWidth - player.width;
 
-            // กระโดด/ร่วง Y
             if (keys.up && player.isGrounded) {
                 player.vy = player.jumpForce;
                 player.isGrounded = false;
@@ -260,7 +269,6 @@
             player.y += player.vy;
             player.isGrounded = false;
 
-            // ตรวจจับการชนแกน Y
             for (let instance of levelInstances) {
                 const typeDef = loadedObjectTypes[instance.type];
                 if (typeDef && typeDef.solid && isColliding(player, instance)) {
@@ -276,20 +284,24 @@
                 }
             }
 
-            // ตำแหน่งกล้อง
+            // ตกแมพ = เกิดใหม่ ณ จุด player_start
+            if (player.y > canvas.height + 200) {
+                resetPlayer();
+            }
+
             cameraX = (player.x + player.width / 2) - canvas.width / 2;
             if (cameraX < 0) cameraX = 0;
             if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
         }
 
-        // 4. วาดฉากลงบน Canvas (แยก Layer วาดท่อทับตัวละคร)
+        // 4. วาดฉาก
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             ctx.save();
             ctx.translate(-cameraX, 0);
 
-            // Layer 1: วาดวัตถุทั่วไปที่ไม่ใช่ท่อ
+            // Layer 1: วัตถุที่ไม่ใช่ท่อ
             for (let instance of levelInstances) {
                 if (instance.type !== 'pipe') {
                     const typeDef = loadedObjectTypes[instance.type];
@@ -300,14 +312,14 @@
                 }
             }
 
-            // Layer 2: วาดตัวละคร
+            // Layer 2: ตัวละคร
             const currentChar = loadedCharacters[player.selectedCharacterId];
             if (currentChar) {
                 const activeImg = player.isCrouching ? currentChar.imgCrouch : currentChar.imgNormal;
                 ctx.drawImage(activeImg, player.x, player.y, player.width, player.height);
             }
 
-            // Layer 3: วาดทับด้วยท่อ (เพื่อให้มุดลงไปในท่อได้อย่างสมจริง)
+            // Layer 3: ท่อ
             for (let instance of levelInstances) {
                 if (instance.type === 'pipe') {
                     const typeDef = loadedObjectTypes[instance.type];
@@ -323,7 +335,7 @@
             // UI
             ctx.fillStyle = "black";
             ctx.font = "16px sans-serif";
-            ctx.fillText(`Player X: ${Math.floor(player.x)} | Objects: ${levelInstances.length}`, 10, 25);
+            ctx.fillText(`Auto-Running | Player X: ${Math.floor(player.x)}`, 10, 25);
         }
 
         function gameLoop() {
